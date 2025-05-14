@@ -217,7 +217,7 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/17c-0VyjVDOsvvNM4hS6o0BskbizV7Adl?usp=sharing"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1ng3gqWqPW9v7ZtbXHx6GLOHXj8fDGh8Q?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
