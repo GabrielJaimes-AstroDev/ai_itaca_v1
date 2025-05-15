@@ -8,5 +8,3 @@ gdown
 scipy
 tqdm
 astropy
-re
-os
