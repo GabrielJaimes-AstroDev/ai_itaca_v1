@@ -63,7 +63,7 @@ def find_input_file(filepath):
     
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
-def process_input_spectra(filepath):
+def process_input_file(filepath):
     temp_txt_path = None
     
     try:
