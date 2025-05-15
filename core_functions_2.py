@@ -8,6 +8,7 @@ from scipy.interpolate import interp1d
 from scipy.signal import find_peaks, peak_widths
 from matplotlib import rcParams
 import tensorflow as tf
+from astropy.io import fits
 
 rcParams.update({
     'font.size': 10,
@@ -61,45 +62,60 @@ def find_input_file(filepath):
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
 from astropy.io import fits
+import numpy as np
+import os
+import re
+
+def leer_fits(filepath):
+    """Lee archivos .spec o .fits y devuelve frecuencias e intensidades ordenadas."""
+    hdul = fits.open(filepath)
+    table = hdul[1].data
+
+    all_freqs = []
+    all_intensities = []
+
+    for row in table:
+        spectrum = row['DATA']
+        crval3 = row['CRVAL3']
+        cdelt3 = row['CDELT3']
+        crpix3 = row['CRPIX3']
+
+        n = len(spectrum)
+        channels = np.arange(n)
+        freqs = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+
+        all_freqs.append(freqs)
+        all_intensities.append(spectrum)
+
+    hdul.close()
+
+    combined_freqs = np.concatenate(all_freqs)
+    combined_intensities = np.concatenate(all_intensities)
+
+    sorted_indices = np.argsort(combined_freqs)
+    freq = combined_freqs[sorted_indices]
+    spec = combined_intensities[sorted_indices]
+
+    return freq, spec, "", None, None  # header, logn y tex no están en FITS
+
+def find_input_file(filepath):
+    if os.path.exists(filepath):
+        return filepath
+    for ext in ['', '.txt', '.dat']:
+        test_path = f"{filepath}{ext}"
+        if os.path.exists(test_path):
+            return test_path
+    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
 def process_input_file(filepath):
+    # Detectar si es archivo FITS o SPEC
+    if filepath.lower().endswith(('.spec', '.fits')):
+        return leer_fits(filepath)
+
+    # Buscar archivo si no existe directamente
     if not os.path.exists(filepath):
         filepath = find_input_file(filepath)
 
-    # Soporte para archivos .fits o .spec (asumimos que ambos son FITS)
-    if filepath.lower().endswith(('.fits', '.spec')):
-        hdul = fits.open(filepath)
-        table = hdul[1].data
-
-        all_freqs = []
-        all_intensities = []
-
-        for row in table:
-            spectrum = row['DATA']
-            crval3 = row['CRVAL3']
-            cdelt3 = row['CDELT3']
-            crpix3 = row['CRPIX3']
-
-            n = len(spectrum)
-            channels = np.arange(n)
-            freqs = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-
-            all_freqs.append(freqs)
-            all_intensities.append(spectrum)
-
-        hdul.close()
-
-        combined_freqs = np.concatenate(all_freqs)
-        combined_intensities = np.concatenate(all_intensities)
-
-        sorted_indices = np.argsort(combined_freqs)
-        freq = combined_freqs[sorted_indices]
-        spec = combined_intensities[sorted_indices]
-
-        # Simular 'header', 'logn', 'tex' inexistentes en FITS
-        return freq, spec, "", None, None
-
-    # Proceso normal para .txt, .dat
     try:
         with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
@@ -127,7 +143,7 @@ def process_input_file(filepath):
             parts = re.split(r'[\s,;]+', line)
             if len(parts) >= 2:
                 try:
-                    freq = float(parts[0]) * 1e9  # GHz -> Hz
+                    freq = float(parts[0]) * 1e9
                     intensity = float(parts[1])
                     data.append((freq, intensity))
                 except ValueError:
@@ -138,6 +154,7 @@ def process_input_file(filepath):
 
     freq, spec = zip(*data)
     return np.array(freq), np.array(spec), header, input_logn, input_tex
+
 
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
