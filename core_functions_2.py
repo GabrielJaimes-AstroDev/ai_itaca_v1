@@ -8,7 +8,6 @@ from scipy.interpolate import interp1d
 from scipy.signal import find_peaks, peak_widths
 from matplotlib import rcParams
 import tensorflow as tf
-from astropy.io import fits
 
 rcParams.update({
     'font.size': 10,
@@ -54,21 +53,84 @@ def find_input_file(filepath):
         return filepath
     
     
-    for ext in ['', '.txt', '.dat']:
+    for ext in ['', '.txt', '.dat', '.spec']:
         test_path = f"{filepath}{ext}"
         if os.path.exists(test_path):
             return test_path
     
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
-from astropy.io import fits
-import numpy as np
 import os
 import re
+import zipfile
+import tempfile
+import numpy as np
+from astropy.io import fits
 
-def leer_fits(filepath):
-    """Lee archivos .spec o .fits y devuelve frecuencias e intensidades ordenadas."""
-    hdul = fits.open(filepath)
+def process_input_file(filepath):
+    ext = os.path.splitext(filepath)[-1].lower()
+
+    # Caso 1: archivo .spec (zip que contiene .fits)
+    if ext == '.spec':
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+
+            fits_files = [f for f in os.listdir(temp_dir) if f.endswith('.fits')]
+            if not fits_files:
+                raise FileNotFoundError("No se encontró ningún archivo .fits dentro del .spec.")
+
+            fits_path = os.path.join(temp_dir, fits_files[0])
+            return _process_fits_file(fits_path)
+
+    # Caso 2: archivo .fits directamente
+    elif ext == '.fits':
+        return _process_fits_file(filepath)
+
+    # Caso 3: archivo de texto plano (.txt u otro)
+    else:
+        try:
+            filepath = find_input_file(filepath)  # Asumiendo que tienes esta función
+            with open(filepath, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+        except UnicodeDecodeError:
+            with open(filepath, 'r', encoding='latin-1') as file:
+                lines = file.readlines()
+
+        header = lines[0].strip() if lines else ""
+
+        input_logn = None
+        input_tex = None
+        input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
+        if input_params:
+            try:
+                input_logn = float(input_params.group(1))
+                input_tex = float(input_params.group(2))
+            except (ValueError, TypeError):
+                input_logn = None
+                input_tex = None
+
+        data = []
+        for line in lines[1:]:
+            line = line.strip()
+            if line and not line.startswith(("//", "#")):
+                parts = re.split(r'[\s,;]+', line)
+                if len(parts) >= 2:
+                    try:
+                        freq = float(parts[0]) * 1e9
+                        intensity = float(parts[1])
+                        data.append((freq, intensity))
+                    except ValueError:
+                        continue
+
+        if len(data) < 10:
+            raise ValueError("Insufficient valid data points in spectrum")
+
+        freq, spec = zip(*data)
+        return np.array(freq), np.array(spec), header, input_logn, input_tex
+
+def _process_fits_file(fits_path):
+    hdul = fits.open(fits_path)
     table = hdul[1].data
 
     all_freqs = []
@@ -93,68 +155,13 @@ def leer_fits(filepath):
     combined_intensities = np.concatenate(all_intensities)
 
     sorted_indices = np.argsort(combined_freqs)
-    freq = combined_freqs[sorted_indices]
-    spec = combined_intensities[sorted_indices]
+    combined_freqs = combined_freqs[sorted_indices]
+    combined_intensities = combined_intensities[sorted_indices]
 
-    return freq, spec, "", None, None  # header, logn y tex no están en FITS
+    if len(combined_freqs) < 10:
+        raise ValueError("Insufficient valid data points in FITS spectrum")
 
-def find_input_file(filepath):
-    if os.path.exists(filepath):
-        return filepath
-    for ext in ['', '.txt', '.dat']:
-        test_path = f"{filepath}{ext}"
-        if os.path.exists(test_path):
-            return test_path
-    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
-
-def process_input_file(filepath):
-    # Detectar si es archivo FITS o SPEC
-    if filepath.lower().endswith(('.spec', '.fits')):
-        return leer_fits(filepath)
-
-    # Buscar archivo si no existe directamente
-    if not os.path.exists(filepath):
-        filepath = find_input_file(filepath)
-
-    try:
-        with open(filepath, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-    except UnicodeDecodeError:
-        with open(filepath, 'r', encoding='latin-1') as file:
-            lines = file.readlines()
-
-    header = lines[0].strip() if lines else ""
-
-    input_logn = None
-    input_tex = None
-    input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-    if input_params:
-        try:
-            input_logn = float(input_params.group(1))
-            input_tex = float(input_params.group(2))
-        except (ValueError, TypeError):
-            input_logn = None
-            input_tex = None
-
-    data = []
-    for line in lines[1:]:
-        line = line.strip()
-        if line and not line.startswith(("//", "#")):
-            parts = re.split(r'[\s,;]+', line)
-            if len(parts) >= 2:
-                try:
-                    freq = float(parts[0]) * 1e9
-                    intensity = float(parts[1])
-                    data.append((freq, intensity))
-                except ValueError:
-                    continue
-
-    if len(data) < 10:
-        raise ValueError("Insufficient valid data points in spectrum")
-
-    freq, spec = zip(*data)
-    return np.array(freq), np.array(spec), header, input_logn, input_tex
-
+    return np.array(combined_freqs), np.array(combined_intensities), "FITS spectrum", None, None
 
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
