@@ -63,34 +63,12 @@ def find_input_file(filepath):
 import os
 import re
 import zipfile
-import tempfile
 import numpy as np
 from astropy.io import fits
 
 def process_input_file(filepath):
-    ext = os.path.splitext(filepath)[-1].lower()
-
-    # Caso 1: archivo .spec (zip que contiene .fits)
-    if ext == '.spec':
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
-
-            fits_files = [f for f in os.listdir(temp_dir) if f.endswith('.fits')]
-            if not fits_files:
-                raise FileNotFoundError("No se encontró ningún archivo .fits dentro del .spec.")
-
-            fits_path = os.path.join(temp_dir, fits_files[0])
-            return _process_fits_file(fits_path)
-
-    # Caso 2: archivo .fits directamente
-    elif ext == '.fits':
-        return _process_fits_file(filepath)
-
-    # Caso 3: archivo de texto plano (.txt u otro)
-    else:
+    def read_txt_file(filepath):
         try:
-            filepath = find_input_file(filepath)  # Asumiendo que tienes esta función
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
         except UnicodeDecodeError:
@@ -117,7 +95,7 @@ def process_input_file(filepath):
                 parts = re.split(r'[\s,;]+', line)
                 if len(parts) >= 2:
                     try:
-                        freq = float(parts[0]) * 1e9
+                        freq = float(parts[0]) * 1e9  # GHz a Hz
                         intensity = float(parts[1])
                         data.append((freq, intensity))
                     except ValueError:
@@ -129,39 +107,62 @@ def process_input_file(filepath):
         freq, spec = zip(*data)
         return np.array(freq), np.array(spec), header, input_logn, input_tex
 
-def _process_fits_file(fits_path):
-    hdul = fits.open(fits_path)
-    table = hdul[1].data
+    def read_fits_file(fits_path):
+        hdul = fits.open(fits_path)
+        table = hdul[1].data
 
-    all_freqs = []
-    all_intensities = []
+        all_freqs = []
+        all_intensities = []
 
-    for row in table:
-        spectrum = row['DATA']
-        crval3 = row['CRVAL3']
-        cdelt3 = row['CDELT3']
-        crpix3 = row['CRPIX3']
+        for row in table:
+            spectrum = row['DATA']
+            crval3 = row['CRVAL3']
+            cdelt3 = row['CDELT3']
+            crpix3 = row['CRPIX3']
 
-        n = len(spectrum)
-        channels = np.arange(n)
-        freqs = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+            n = len(spectrum)
+            channels = np.arange(n)
+            freqs = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
 
-        all_freqs.append(freqs)
-        all_intensities.append(spectrum)
+            all_freqs.append(freqs)
+            all_intensities.append(spectrum)
 
-    hdul.close()
+        hdul.close()
 
-    combined_freqs = np.concatenate(all_freqs)
-    combined_intensities = np.concatenate(all_intensities)
+        combined_freqs = np.concatenate(all_freqs)
+        combined_intensities = np.concatenate(all_intensities)
 
-    sorted_indices = np.argsort(combined_freqs)
-    combined_freqs = combined_freqs[sorted_indices]
-    combined_intensities = combined_intensities[sorted_indices]
+        sorted_indices = np.argsort(combined_freqs)
+        combined_freqs = combined_freqs[sorted_indices]
+        combined_intensities = combined_intensities[sorted_indices]
 
-    if len(combined_freqs) < 10:
-        raise ValueError("Insufficient valid data points in FITS spectrum")
+        return np.array(combined_freqs), np.array(combined_intensities), "FITS data", None, None
 
-    return np.array(combined_freqs), np.array(combined_intensities), "FITS spectrum", None, None
+    def read_spec_file(spec_path):
+        extract_folder = os.path.splitext(spec_path)[0] + "_unzipped"
+        os.makedirs(extract_folder, exist_ok=True)
+
+        with zipfile.ZipFile(spec_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_folder)
+
+        fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
+        if not fits_files:
+            raise FileNotFoundError("No se encontró ningún archivo .fits dentro del archivo .spec.")
+
+        fits_file_path = os.path.join(extract_folder, fits_files[0])
+        return read_fits_file(fits_file_path)
+
+    # --- Lógica principal según tipo de archivo ---
+    ext = os.path.splitext(filepath)[1].lower()
+
+    if ext == '.txt':
+        return read_txt_file(filepath)
+    elif ext == '.fits':
+        return read_fits_file(filepath)
+    elif ext == '.spec' or ext == '.zip':
+        return read_spec_file(filepath)
+    else:
+        raise ValueError(f"Unsupported file format: {ext}")
 
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
