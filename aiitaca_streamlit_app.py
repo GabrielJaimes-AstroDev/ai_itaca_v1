@@ -280,22 +280,17 @@ def download_models_from_drive(folder_url, output_dir):
         # Primero verificamos cuántos archivos hay que descargar
         file_count = 0
         try:
-            # Esta parte es solo para simular el progreso ya que gdown no provee callback
-            # En una implementación real necesitarías saber de antemano cuántos archivos hay
             file_count = 10  # Valor estimado para la simulación
         except:
             file_count = 10  # Valor por defecto si no podemos obtener el conteo real
             
         with st.spinner("📥 Downloading models from Google Drive..."):
-            # Descargamos los archivos sin callback
             gdown.download_folder(
                 folder_url, 
                 output=output_dir, 
                 quiet=True,  # Silenciamos la salida por consola
                 use_cookies=False
             )
-            
-            # Simulamos progreso ya que no tenemos callback real
             for i in range(file_count):
                 time.sleep(0.5)  # Pequeña pausa para simular descarga
                 progress = int((i + 1) / file_count * 100)
