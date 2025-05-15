@@ -68,54 +68,121 @@ def process_input_spectra(filepath):
     
     try:
         if filepath.endswith('.spec'):
+            # Crear directorio temporal para extracción
+            temp_dir = tempfile.mkdtemp()
+            
+            # Extraer todo el contenido del .spec
             with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                temp_dir = tempfile.mkdtemp()
                 zip_ref.extractall(temp_dir)
-                fits_files = [f for f in os.listdir(temp_dir) if f.endswith('.fits')]
-                if not fits_files:
-                    raise FileNotFoundError("No .fits file found inside .spec archive")
-                fits_file_path = os.path.join(temp_dir, fits_files[0])
-                filepath = fits_file_path
+            
+            # Buscar TODOS los archivos .fits en el directorio y subdirectorios
+            fits_files = []
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    if file.endswith('.fits'):
+                        fits_files.append(os.path.join(root, file))
+            
+            if not fits_files:
+                raise FileNotFoundError("No .fits files found inside .spec archive")
+            
+            # Procesar cada archivo .fits y combinar los datos
+            all_combined_freqs = []
+            all_combined_intensities = []
+            
+            for fits_file in fits_files:
+                hdul = fits.open(fits_file)
+                table = hdul[1].data
+                
+                # Procesamiento individual de cada archivo FITS
+                file_freqs = []
+                file_intensities = []
+                
+                for row in table:
+                    spectrum = row['DATA']
+                    crval3 = row['CRVAL3']
+                    cdelt3 = row['CDELT3']
+                    crpix3 = row['CRPIX3']
+                    
+                    n = len(spectrum)
+                    channels = np.arange(n)
+                    freqs = crval3 + (channels + 1 - crpix3) * cdelt3
+                    file_freqs.append(freqs)
+                    file_intensities.append(spectrum)
+                
+                # Combinar datos dentro del mismo archivo FITS
+                combined_freqs = np.concatenate(file_freqs)
+                combined_intensities = np.concatenate(file_intensities)
+                
+                all_combined_freqs.append(combined_freqs)
+                all_combined_intensities.append(combined_intensities)
+                hdul.close()
+            
+            # Combinar todos los archivos FITS en un solo espectro
+            final_freqs = np.concatenate(all_combined_freqs)
+            final_intensities = np.concatenate(all_combined_intensities)
+            
+            # Ordenar por frecuencia
+            sorted_indices = np.argsort(final_freqs)
+            final_freqs = final_freqs[sorted_indices]
+            final_intensities = final_intensities[sorted_indices]
+            
+            # Crear archivo temporal .txt
+            temp_txt_path = os.path.join(temp_dir, 'combined_spectrum.txt')
+            final_freqs_GHz = final_freqs / 1e9
+            data_to_save = np.column_stack((final_freqs_GHz, final_intensities))
+            np.savetxt(temp_txt_path, data_to_save, fmt='%.6f', delimiter='\t',
+                      header='Frequency_GHz\tIntensity')
+            
+            filepath = temp_txt_path
 
-        if filepath.endswith('.fits'):
-            temp_txt_path = os.path.join(tempfile.mkdtemp(), 'temp_spectrum.txt')
+        # Procesamiento para archivos .fits individuales (no dentro de .spec)
+        elif filepath.endswith('.fits'):
+            temp_dir = tempfile.mkdtemp()
+            temp_txt_path = os.path.join(temp_dir, 'temp_spectrum.txt')
+            
             hdul = fits.open(filepath)
             table = hdul[1].data
+            
             all_freqs = []
             all_intensities = []
-
+            
             for row in table:
                 spectrum = row['DATA']
                 crval3 = row['CRVAL3']
                 cdelt3 = row['CDELT3']
                 crpix3 = row['CRPIX3']
+                
                 n = len(spectrum)
                 channels = np.arange(n)
                 freqs = crval3 + (channels + 1 - crpix3) * cdelt3
                 all_freqs.append(freqs)
                 all_intensities.append(spectrum)
-
+            
             combined_freqs = np.concatenate(all_freqs)
             combined_intensities = np.concatenate(all_intensities)
+            
             sorted_indices = np.argsort(combined_freqs)
             combined_freqs = combined_freqs[sorted_indices]
             combined_intensities = combined_intensities[sorted_indices]
+            
             combined_freqs_GHz = combined_freqs / 1e9
-
             data_to_save = np.column_stack((combined_freqs_GHz, combined_intensities))
-            np.savetxt(temp_txt_path, data_to_save, fmt='%.6f', delimiter='\t', 
+            np.savetxt(temp_txt_path, data_to_save, fmt='%.6f', delimiter='\t',
                       header='Frequency_GHz\tIntensity')
             hdul.close()
             filepath = temp_txt_path
 
+        # Leer el archivo de texto resultante (ya sea .txt original o generado)
         with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
+    
     except UnicodeDecodeError:
         with open(filepath, 'r', encoding='latin-1') as file:
             lines = file.readlines()
     
     header = lines[0].strip() if lines else ""
     
+    # Extraer parámetros (opcional)
     input_logn = None
     input_tex = None
     input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
@@ -127,6 +194,7 @@ def process_input_spectra(filepath):
             input_logn = None
             input_tex = None
     
+    # Procesar datos numéricos
     data = []
     for line in lines[1:]:
         line = line.strip()
@@ -134,7 +202,7 @@ def process_input_spectra(filepath):
             parts = re.split(r'[\s,;]+', line)
             if len(parts) >= 2:
                 try:
-                    freq = float(parts[0]) * 1e9
+                    freq = float(parts[0]) * 1e9  # Convertir GHz a Hz
                     intensity = float(parts[1])
                     data.append((freq, intensity))
                 except ValueError:
@@ -145,6 +213,7 @@ def process_input_spectra(filepath):
     
     freq, spec = zip(*data)
     
+    # Limpieza de archivos temporales
     if temp_txt_path and os.path.exists(temp_txt_path):
         try:
             os.remove(temp_txt_path)
