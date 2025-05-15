@@ -63,42 +63,51 @@ def find_input_file(filepath):
     
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
-def process_input_file(filepath):
-    if filepath.endswith('.spec'):
-        with zipfile.ZipFile(filepath, 'r') as zip_ref:
-            temp_dir = tempfile.mkdtemp()
-            zip_ref.extractall(temp_dir)
-            fits_files = [f for f in os.listdir(temp_dir) if f.endswith('.fits')]
-            if not fits_files:
-                raise FileNotFoundError("No FITS files found in .spec archive")
-            filepath = os.path.join(temp_dir, fits_files[0])
-    
-    if filepath.endswith('.fits'):
-        hdul = fits.open(filepath)
-        table = hdul[1].data
-        all_freqs = []
-        all_intensities = []
-        
-        for row in table:
-            spectrum = row['DATA']
-            crval3 = row['CRVAL3']
-            cdelt3 = row['CDELT3']
-            crpix3 = row['CRPIX3']
-            n = len(spectrum)
-            channels = np.arange(n)
-            freqs = crval3 + (channels + 1 - crpix3) * cdelt3
-            all_freqs.append(freqs)
-            all_intensities.append(spectrum)
-        
-        combined_freqs = np.concatenate(all_freqs)
-        combined_intensities = np.concatenate(all_intensities)
-        sorted_indices = np.argsort(combined_freqs)
-        freq = combined_freqs[sorted_indices]
-        spec = combined_intensities[sorted_indices]
-        hdul.close()
-        return freq, spec, "", None, None
+def process_input_spectra(filepath):
+    temp_txt_path = None
     
     try:
+        if filepath.endswith('.spec'):
+            with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                temp_dir = tempfile.mkdtemp()
+                zip_ref.extractall(temp_dir)
+                fits_files = [f for f in os.listdir(temp_dir) if f.endswith('.fits')]
+                if not fits_files:
+                    raise FileNotFoundError("No .fits file found inside .spec archive")
+                fits_file_path = os.path.join(temp_dir, fits_files[0])
+                filepath = fits_file_path
+
+        if filepath.endswith('.fits'):
+            temp_txt_path = os.path.join(tempfile.mkdtemp(), 'temp_spectrum.txt')
+            hdul = fits.open(filepath)
+            table = hdul[1].data
+            all_freqs = []
+            all_intensities = []
+
+            for row in table:
+                spectrum = row['DATA']
+                crval3 = row['CRVAL3']
+                cdelt3 = row['CDELT3']
+                crpix3 = row['CRPIX3']
+                n = len(spectrum)
+                channels = np.arange(n)
+                freqs = crval3 + (channels + 1 - crpix3) * cdelt3
+                all_freqs.append(freqs)
+                all_intensities.append(spectrum)
+
+            combined_freqs = np.concatenate(all_freqs)
+            combined_intensities = np.concatenate(all_intensities)
+            sorted_indices = np.argsort(combined_freqs)
+            combined_freqs = combined_freqs[sorted_indices]
+            combined_intensities = combined_intensities[sorted_indices]
+            combined_freqs_GHz = combined_freqs / 1e9
+
+            data_to_save = np.column_stack((combined_freqs_GHz, combined_intensities))
+            np.savetxt(temp_txt_path, data_to_save, fmt='%.6f', delimiter='\t', 
+                      header='Frequency_GHz\tIntensity')
+            hdul.close()
+            filepath = temp_txt_path
+
         with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
     except UnicodeDecodeError:
@@ -135,6 +144,13 @@ def process_input_file(filepath):
         raise ValueError("Insufficient valid data points in spectrum")
     
     freq, spec = zip(*data)
+    
+    if temp_txt_path and os.path.exists(temp_txt_path):
+        try:
+            os.remove(temp_txt_path)
+        except:
+            pass
+    
     return np.array(freq), np.array(spec), header, input_logn, input_tex
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
