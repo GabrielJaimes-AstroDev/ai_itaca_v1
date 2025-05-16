@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import tensorflow as tf
 import gdown
 import shutil
+import time
 
 st.set_page_config(
     layout="wide", 
@@ -212,6 +213,12 @@ st.markdown("""
         font-size: 0.9em;
         color: #333 !important;
     }
+    
+    /* Estilo para la barra de progreso */
+    .progress-bar {
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -250,12 +257,13 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/17c-0VyjVDOsvvNM4hS6o0BskbizV7Adl?usp=sharing"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1zlnkEoRvHR1CoK9hXxD0Jy4JIKF5Uybz?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
+@st.cache_data(show_spinner=True)
 @st.cache_data(show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
     model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
@@ -265,11 +273,35 @@ def download_models_from_drive(folder_url, output_dir):
         return model_files, data_files, True
 
     try:
+        progress_text = st.sidebar.empty()
+        progress_bar = st.sidebar.progress(0)
+        progress_text.text("📥 Preparing to download models...")
+        
+        # Primero verificamos cuántos archivos hay que descargar
+        file_count = 0
+        try:
+            file_count = 10  # Valor estimado para la simulación
+        except:
+            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
+            
         with st.spinner("📥 Downloading models from Google Drive..."):
-            gdown.download_folder(folder_url, output=output_dir, quiet=False, use_cookies=False)
+            gdown.download_folder(
+                folder_url, 
+                output=output_dir, 
+                quiet=True,  # Silenciamos la salida por consola
+                use_cookies=False
+            )
+            for i in range(file_count):
+                time.sleep(0.5)  # Pequeña pausa para simular descarga
+                progress = int((i + 1) / file_count * 100)
+                progress_bar.progress(progress)
+                progress_text.text(f"📥 Downloading models... {progress}%")
         
         model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
         data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
+        
+        progress_bar.progress(100)
+        progress_text.text("Process Completed")
         
         if model_files and data_files:
             st.sidebar.success("✅ Models downloaded successfully!")
@@ -287,9 +319,9 @@ st.sidebar.title("Configuration")
 model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
 input_file = st.sidebar.file_uploader(
-    "Input Spectrum File",
+    "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
     type=None,
-    help="Drag and drop file here. Limit 200MB per file"
+    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
 )
 
 st.sidebar.subheader("Peak Matching Parameters")
@@ -420,131 +452,155 @@ if input_file is not None:
 
         if analyze_btn:
             try:
-                with st.spinner("Analyzing spectrum..."):
-                    mol_name = selected_model.replace('_model.keras', '')
+                # Configurar la barra de progreso para el análisis
+                progress_text = st.empty()
+                progress_bar = st.progress(0)
+                
+                def update_analysis_progress(step, total_steps=6):
+                    progress = int((step / total_steps) * 100)
+                    progress_bar.progress(progress)
+                    steps = [
+                        "Loading model...",
+                        "Processing spectrum...",
+                        "Detecting peaks...",
+                        "Matching with database...",
+                        "Calculating parameters...",
+                        "Generating visualizations..."
+                    ]
+                    progress_text.text(f"🔍 Analyzing spectrum... {steps[step-1]} ({progress}%)")
+                
+                update_analysis_progress(1)
+                mol_name = selected_model.replace('_model.keras', '')
 
-                    model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
-                    model = tf.keras.models.load_model(model_path)
+                model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
+                model = tf.keras.models.load_model(model_path)
 
-                    data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
-                    if not os.path.exists(data_file):
-                        st.error(f"Training data not found for {mol_name}")
-                    else:
-                        with np.load(data_file) as data:
-                            train_freq = data['train_freq']
-                            train_data = data['train_data']
-                            train_logn = data['train_logn']
-                            train_tex = data['train_tex']
-                            headers = data['headers']
-                            filenames = data['filenames']
+                update_analysis_progress(2)
+                data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
+                if not os.path.exists(data_file):
+                    st.error(f"Training data not found for {mol_name}")
+                else:
+                    with np.load(data_file) as data:
+                        train_freq = data['train_freq']
+                        train_data = data['train_data']
+                        train_logn = data['train_logn']
+                        train_tex = data['train_tex']
+                        headers = data['headers']
+                        filenames = data['filenames']
 
-                        results = analyze_spectrum(
-                            tmp_path, model, train_data, train_freq,
-                            filenames, headers, train_logn, train_tex,
-                            config, mol_name
-                        )
+                    update_analysis_progress(3)
+                    results = analyze_spectrum(
+                        tmp_path, model, train_data, train_freq,
+                        filenames, headers, train_logn, train_tex,
+                        config, mol_name
+                    )
 
-                        st.success("Analysis completed successfully!")
+                    update_analysis_progress(6)
+                    st.success("Analysis completed successfully!")
 
-                        tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                            "Interactive Summary", 
-                            "Molecule Best Match", 
-                            "Peak Matching", 
-                            "CNN Training", 
-                            "Top Selection: LogN", 
-                            "Top Selection: Tex"
-                        ])
+                    tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                        "Interactive Summary", 
+                        "Molecule Best Match", 
+                        "Peak Matching", 
+                        "CNN Training", 
+                        "Top Selection: LogN", 
+                        "Top Selection: Tex"
+                    ])
 
-                        with tab0:
-                            if results.get('best_match'):
-                                st.markdown(f"""
-                                <div class="summary-panel">
-                                    <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
-                                    <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
-                                    <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
-                                    <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                fig = go.Figure()
-                                
-                                fig.add_trace(go.Scatter(
-                                    x=results['input_freq'],
-                                    y=results['input_spec'],
-                                    mode='lines',
-                                    name='Input Spectrum',
-                                    line=dict(color='white', width=2))
-                                )
-                                
-                                fig.add_trace(go.Scatter(
-                                    x=results['best_match']['x_synth'],
-                                    y=results['best_match']['y_synth'],
-                                    mode='lines',
-                                    name='Best Match',
-                                    line=dict(color='red', width=2))
-                                )
-                                
-                                fig.update_layout(
-                                    plot_bgcolor='#0D0F14',
-                                    paper_bgcolor='#0D0F14',
-                                    margin=dict(l=50, r=50, t=60, b=50),
-                                    xaxis_title='Frequency (GHz)',
-                                    yaxis_title='Intensity (K)',
-                                    hovermode='x unified',
-                                    legend=dict(
-                                        orientation="h",
-                                        yanchor="bottom",
-                                        y=1.02,
-                                        xanchor="right",
-                                        x=1
-                                    ),
-                                    height=600,
-                                    font=dict(color='white'),
-                                    xaxis=dict(gridcolor='#3A3A3A'),
-                                    yaxis=dict(gridcolor='#3A3A3A')
-                                )
-                                
-                                st.plotly_chart(fig, use_container_width=True)
+                    with tab0:
+                        if results.get('best_match'):
+                            st.markdown(f"""
+                            <div class="summary-panel">
+                                <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
+                                <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
+                                <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
+                                <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            fig = go.Figure()
+                            
+                            fig.add_trace(go.Scatter(
+                                x=results['input_freq'],
+                                y=results['input_spec'],
+                                mode='lines',
+                                name='Input Spectrum',
+                                line=dict(color='white', width=2))
+                            )
+                            
+                            fig.add_trace(go.Scatter(
+                                x=results['best_match']['x_synth'],
+                                y=results['best_match']['y_synth'],
+                                mode='lines',
+                                name='Best Match',
+                                line=dict(color='red', width=2))
+                            )
+                            
+                            fig.update_layout(
+                                plot_bgcolor='#0D0F14',
+                                paper_bgcolor='#0D0F14',
+                                margin=dict(l=50, r=50, t=60, b=50),
+                                xaxis_title='Frequency (GHz)',
+                                yaxis_title='Intensity (K)',
+                                hovermode='x unified',
+                                legend=dict(
+                                    orientation="h",
+                                    yanchor="bottom",
+                                    y=1.02,
+                                    xanchor="right",
+                                    x=1
+                                ),
+                                height=600,
+                                font=dict(color='white'),
+                                xaxis=dict(gridcolor='#3A3A3A'),
+                                yaxis=dict(gridcolor='#3A3A3A')
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
 
-                        with tab1:
-                            if results['best_match']:
-                                st.pyplot(plot_summary_comparison(
-                                    results['input_freq'], results['input_spec'],
-                                    results['best_match'], tmp_path
-                                ))
-
-                        with tab2:
-                            if results['best_match']:
-                                st.pyplot(plot_zoomed_peaks_comparison(
-                                    results['input_spec'], results['input_freq'],
-                                    results['best_match']
-                                ))
-
-                        with tab3:
-                            st.pyplot(plot_best_matches(
-                                results['train_logn'], results['train_tex'],
-                                results['similarities'], results['distances'],
-                                results['closest_idx_sim'], results['closest_idx_dist'],
-                                results['train_filenames'], results['input_logn']
+                    with tab1:
+                        if results['best_match']:
+                            st.pyplot(plot_summary_comparison(
+                                results['input_freq'], results['input_spec'],
+                                results['best_match'], tmp_path
                             ))
 
-                        with tab4:
-                            st.pyplot(plot_tex_metrics(
-                                results['train_tex'], results['train_logn'],
-                                results['similarities'], results['distances'],
-                                results['top_similar_indices'],
-                                results['input_tex'], results['input_logn']
+                    with tab2:
+                        if results['best_match']:
+                            st.pyplot(plot_zoomed_peaks_comparison(
+                                results['input_spec'], results['input_freq'],
+                                results['best_match']
                             ))
 
-                        with tab5:
-                            st.pyplot(plot_similarity_metrics(
-                                results['train_logn'], results['train_tex'],
-                                results['similarities'], results['distances'],
-                                results['top_similar_indices'],
-                                results['input_logn'], results['input_tex']
-                            ))
+                    with tab3:
+                        st.pyplot(plot_best_matches(
+                            results['train_logn'], results['train_tex'],
+                            results['similarities'], results['distances'],
+                            results['closest_idx_sim'], results['closest_idx_dist'],
+                            results['train_filenames'], results['input_logn']
+                        ))
 
-                    os.unlink(tmp_path)
+                    with tab4:
+                        st.pyplot(plot_tex_metrics(
+                            results['train_tex'], results['train_logn'],
+                            results['similarities'], results['distances'],
+                            results['top_similar_indices'],
+                            results['input_tex'], results['input_logn']
+                        ))
+
+                    with tab5:
+                        st.pyplot(plot_similarity_metrics(
+                            results['train_logn'], results['train_tex'],
+                            results['similarities'], results['distances'],
+                            results['top_similar_indices'],
+                            results['input_logn'], results['input_tex']
+                        ))
+
+                    # Limpiar la barra de progreso al finalizar
+                    progress_bar.empty()
+                    progress_text.empty()
+
+                os.unlink(tmp_path)
             except Exception as e:
                 st.error(f"Error during analysis: {e}")
                 if os.path.exists(tmp_path):
@@ -557,7 +613,7 @@ else:
 st.sidebar.markdown("""
 **Instructions:**
 1. Select the directory containing the trained models
-2. Upload your input spectrum file 
+2. Upload your input spectrum file ( . | .txt | .dat | .fits | .spec )
 3. Adjust the peak matching parameters as needed
 4. Select the model to use for analysis
 5. Click 'Analyze Spectrum' to run the analysis
