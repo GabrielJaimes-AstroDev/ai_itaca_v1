@@ -77,114 +77,129 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # Caso 1: Archivo .FITS directo (nuevo)
+        # Verificación inicial del archivo
+        if not os.path.isfile(filepath):
+            raise ValueError(f"Archivo no encontrado: {filepath}")
+
+        # Caso 1: Archivo .FITS
         if filepath.lower().endswith('.fits'):
-            with fits.open(filepath) as hdul:
-                # Intenta extraer logn y tex del header primario
-                try:
-                    header_str = str(hdul[0].header)
-                    input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header_str.lower())
-                    if input_params:
-                        input_logn = float(input_params.group(1))
-                        input_tex = float(input_params.group(2))
-                    header = f"FITS header: {header_str[:100]}..."  # Resumen del header
-                except:
-                    pass
+            try:
+                with fits.open(filepath) as hdul:
+                    if len(hdul) < 2:
+                        raise ValueError("El archivo FITS no contiene extensión de datos")
 
-                # Procesamiento de datos (adaptado de tu referencia)
-                table = hdul[1].data
-                all_freqs = []
-                all_intensities = []
-                
-                for row in table:
-                    spectrum = row['DATA']
-                    crval3 = row['CRVAL3']  # Frecuencia inicial (Hz)
-                    cdelt3 = row['CDELT3']  # Paso espectral (Hz)
-                    crpix3 = row['CRPIX3']  # Píxel de referencia
-                    
-                    n = len(spectrum)
-                    freqs = crval3 + (np.arange(n) + 1 - crpix3) * cdelt3
-                    
-                    all_freqs.append(freqs)
-                    all_intensities.append(spectrum)
+                    # Procesamiento de datos
+                    table = hdul[1].data
+                    if not all(col in table.names for col in ['DATA', 'CRVAL3', 'CDELT3', 'CRPIX3']):
+                        raise ValueError("Estructura FITS no compatible: faltan columnas requeridas")
 
-                # Combina y ordena los datos
-                if all_freqs:
+                    all_freqs, all_intensities = [], []
+                    for row in table:
+                        spectrum = row['DATA']
+                        freqs = row['CRVAL3'] + (np.arange(len(spectrum)) + 1 - row['CRPIX3']) * row['CDELT3']
+                        all_freqs.append(freqs)
+                        all_intensities.append(spectrum)
+
+                    if not all_freqs:
+                        raise ValueError("No hay datos espectrales en el archivo FITS")
+
                     freq = np.concatenate(all_freqs)
                     spec = np.concatenate(all_intensities)
-                    sorted_idx = np.argsort(freq)
-                    freq = freq[sorted_idx]
-                    spec = spec[sorted_idx]
-                else:
-                    raise ValueError("No se encontraron datos espectrales en el archivo FITS")
+                    sort_idx = np.argsort(freq)
+                    freq, spec = freq[sort_idx], spec[sort_idx]
 
-            return freq, spec, header, input_logn, input_tex
+                    # Extracción de metadatos
+                    primary_header = hdul[0].header
+                    header = str(primary_header)
+                    if 'LOGN' in primary_header and 'TEX' in primary_header:
+                        input_logn = float(primary_header['LOGN'])
+                        input_tex = float(primary_header['TEX'])
 
-        # Caso 2: Archivo de texto (.TXT)
-        try:
-            # Intenta con UTF-8 primero
-            with open(filepath, 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-        except UnicodeDecodeError:
-            # Fallback a Latin-1
-            with open(filepath, 'r', encoding='latin-1') as file:
-                lines = file.readlines()
+            except Exception as e:
+                raise ValueError(f"Error procesando FITS: {str(e)}")
 
-        # Procesamiento de texto (original)
-        header = lines[0].strip() if lines else ""
-        input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-        if input_params:
+        # Caso 2: Archivo de texto
+        elif filepath.lower().endswith('.txt'):
             try:
-                input_logn = float(input_params.group(1))
-                input_tex = float(input_params.group(2))
-            except (ValueError, TypeError):
-                input_logn = input_tex = None
-
-        data = []
-        for line in lines[1:]:
-            line = line.strip()
-            if line and not line.startswith(("//", "#")):
-                parts = re.split(r'[\s,;]+', line)
-                if len(parts) >= 2:
+                # Intenta múltiples codificaciones
+                encodings = ['utf-8', 'latin-1', 'iso-8859-1']
+                lines = None
+                for enc in encodings:
                     try:
-                        freq_ghz = float(parts[0])
-                        intensity = float(parts[1])
-                        data.append((freq_ghz * 1e9, intensity))  # Convertir GHz a Hz
+                        with open(filepath, 'r', encoding=enc) as f:
+                            lines = f.readlines()
+                        break
+                    except UnicodeDecodeError:
+                        continue
+
+                if not lines:
+                    raise ValueError("No se pudo decodificar el archivo de texto")
+
+                # Procesamiento de líneas
+                data = []
+                header = lines[0].strip() if lines else ""
+                
+                # Búsqueda de parámetros en header
+                param_pattern = re.compile(r'(logn|tex)[\s=:]+([\d.]+)', re.IGNORECASE)
+                matches = param_pattern.finditer(header)
+                for match in matches:
+                    param, value = match.groups()
+                    try:
+                        if param.lower() == 'logn':
+                            input_logn = float(value)
+                        elif param.lower() == 'tex':
+                            input_tex = float(value)
                     except ValueError:
                         continue
 
-        if len(data) < 10:
-            raise ValueError("Insufficient valid data points (<10)")
+                # Procesamiento de datos
+                for line in lines[1:]:
+                    line = line.strip()
+                    if line and not line.startswith(("#", "//", ";")):
+                        parts = re.split(r'[\s,;|]+', line)
+                        if len(parts) >= 2:
+                            try:
+                                freq_val = float(parts[0]) * 1e9  # GHz → Hz
+                                intensity = float(parts[1])
+                                data.append((freq_val, intensity))
+                            except ValueError:
+                                continue
 
-        freq, spec = zip(*data)
-        freq = np.array(freq)
-        spec = np.array(spec)
+                if len(data) < 10:
+                    raise ValueError("Se requieren al menos 10 puntos de datos válidos")
 
-    except (UnicodeDecodeError, ValueError) as e:
-        # Caso 3: Archivo .SPEC/.ZIP (original)
-        if not zipfile.is_zipfile(filepath):
-            raise ValueError(f"Formato no soportado: {filepath}") from e
+                freq, spec = zip(*data)
+                freq, spec = np.array(freq), np.array(spec)
 
-        extract_folder = f"temp_unzip_{os.path.basename(filepath)}"
-        try:
-            with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                zip_ref.extractall(extract_folder)
+            except Exception as e:
+                raise ValueError(f"Error procesando texto: {str(e)}")
 
-            fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
-            if not fits_files:
-                raise FileNotFoundError("No hay archivos .fits en el ZIP")
+        # Caso 3: Archivo comprimido (.zip, .spec)
+        elif zipfile.is_zipfile(filepath):
+            temp_dir = tempfile.mkdtemp()
+            try:
+                with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Buscar archivos FITS en el directorio temporal
+                fits_files = [f for f in os.listdir(temp_dir) if f.lower().endswith('.fits')]
+                if not fits_files:
+                    raise ValueError("No se encontraron archivos .fits en el archivo comprimido")
+                
+                # Procesar el primer archivo FITS encontrado
+                fits_path = os.path.join(temp_dir, fits_files[0])
+                freq, spec, header, input_logn, input_tex = process_input_file(fits_path)
+                header = f"Extraído de {os.path.basename(filepath)}: {header}"
 
-            # Procesa el primer .fits encontrado (como en el caso directo)
-            fits_path = os.path.join(extract_folder, fits_files[0])
-            freq, spec, header, _, _ = process_input_file(fits_path)  # Recursividad
-            header = f"From ZIP: {header}"
+            finally:
+                # Limpieza segura del directorio temporal
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
-        finally:
-            # Limpieza de archivos temporales
-            for root, _, files in os.walk(extract_folder, topdown=False):
-                for f in files:
-                    os.remove(os.path.join(root, f))
-                os.rmdir(root)
+        else:
+            raise ValueError(f"Formato no soportado: {os.path.basename(filepath)}. Formatos válidos: .fits, .txt, .zip/.spec")
+
+    except Exception as e:
+        raise ValueError(f"Error procesando {filepath}: {str(e)}")
 
     return freq, spec, header, input_logn, input_tex
 
