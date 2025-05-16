@@ -71,7 +71,7 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # Intentar abrir el archivo directamente como un archivo de texto
+        # .TXT
         with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
             header = lines[0].strip() if lines else ""
@@ -106,7 +106,7 @@ def process_input_file(filepath):
 
     except UnicodeDecodeError:
         try:
-            # Intentar abrir el archivo con otra codificación si falla la UTF-8
+            # .TXT with Codex UTF-8
             with open(filepath, 'r', encoding='latin-1') as file:
                 lines = file.readlines()
                 header = lines[0].strip() if lines else ""
@@ -141,35 +141,8 @@ def process_input_file(filepath):
 
         except Exception as e_text:
             try:
-                # Verificar si es un archivo .fits directamente
-                if filepath.lower().endswith('.fits'):
-                    try:
-                        with fits.open(filepath) as hdul:
-                            table = hdul[1].data
-                            all_freqs = []
-                            all_intensities = []
-                            for row in table:
-                                spectrum = row['DATA']
-                                crval3 = row['CRVAL3']
-                                cdelt3 = row['CDELT3']
-                                crpix3 = row['CRPIX3']
-                                n = len(spectrum)
-                                channels = np.arange(n)
-                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-                                all_freqs.append(frequencies)
-                                all_intensities.append(spectrum)
-
-                            combined_freqs = np.concatenate(all_freqs)
-                            combined_intensities = np.concatenate(all_intensities)
-                            sorted_indices = np.argsort(combined_freqs)
-                            freq = combined_freqs[sorted_indices]
-                            spec = combined_intensities[sorted_indices]
-                            header = f"Processed from direct FITS file: {os.path.basename(filepath)}"
-                    except Exception as e_fits:
-                        raise ValueError(f"Error processing direct FITS file: {e_fits}")
-                
-                # Intentar abrir como un archivo .spec (zip) y procesar el primer .fits encontrado
-                elif zipfile.is_zipfile(filepath):
+                # .SPEC and Uncompress .ZIP into .FITS
+                if zipfile.is_zipfile(filepath):
                     extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
                     os.makedirs(extract_folder, exist_ok=True)
                     try:
@@ -214,7 +187,7 @@ def process_input_file(filepath):
                                 os.rmdir(os.path.join(root, name))
                         os.rmdir(extract_folder)
                 else:
-                    raise ValueError(f"El archivo no es un archivo de texto legible, un archivo .fits directo ni un archivo .spec válido: {e_text}")
+                    raise ValueError(f"El archivo no es un archivo de texto legible ni un archivo .spec válido: {e_text}")
             except Exception as e_zip:
                 raise ValueError(f"Error al procesar el archivo: {e_zip}")
 
