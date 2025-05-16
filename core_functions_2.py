@@ -76,37 +76,40 @@ def process_input_file(filepath):
     freq = np.array([])
     spec = np.array([])
 
-    try:
-        # Direct .FITS file handling
-        if filepath.lower().endswith('.fits'):
-            try:
-                with fits.open(filepath) as hdul:
-                    table = hdul[1].data
-                    all_freqs = []
-                    all_intensities = []
-                    for row in table:
-                        spectrum = row['DATA']
-                        crval3 = row['CRVAL3']
-                        cdelt3 = row['CDELT3']
-                        crpix3 = row['CRPIX3']
-                        n = len(spectrum)
-                        channels = np.arange(n)
-                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-                        all_freqs.append(frequencies)
-                        all_intensities.append(spectrum)
+    # Direct .FITS file handling first
+    if filepath.lower().endswith('.fits'):
+        try:
+            with fits.open(filepath) as hdul:
+                table = hdul[1].data
+                all_freqs = []
+                all_intensities = []
+                for row in table:
+                    spectrum = row['DATA']
+                    crval3 = row['CRVAL3']
+                    cdelt3 = row['CDELT3']
+                    crpix3 = row['CRPIX3']
+                    n = len(spectrum)
+                    channels = np.arange(n)
+                    frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+                    all_freqs.append(frequencies)
+                    all_intensities.append(spectrum)
 
-                    combined_freqs = np.concatenate(all_freqs)
-                    combined_intensities = np.concatenate(all_intensities)
-                    sorted_indices = np.argsort(combined_freqs)
-                    freq = combined_freqs[sorted_indices]
-                    spec = combined_intensities[sorted_indices]
-                    header = f"Processed from FITS file: {os.path.basename(filepath)}"
-            except Exception as e_fits:
-                raise ValueError(f"Error processing FITS file: {e_fits}")
-            
-            return freq, spec, header, input_logn, input_tex
-        
-        # .TXT
+                combined_freqs = np.concatenate(all_freqs)
+                combined_intensities = np.concatenate(all_intensities)
+                sorted_indices = np.argsort(combined_freqs)
+                freq = combined_freqs[sorted_indices]
+                spec = combined_intensities[sorted_indices]
+                header = f"Processed from FITS file: {os.path.basename(filepath)}"
+                
+                return freq, spec, header, input_logn, input_tex
+        except Exception as e_fits:
+            # Si falla el procesamiento del archivo FITS, registrar el error pero continuar con
+            # otros métodos de procesamiento
+            print(f"Warning: Failed to process as FITS file: {e_fits}")
+            # No lanzar excepción aquí, para permitir intentar otros formatos
+    
+    # Try as text file (UTF-8)
+    try:
         with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
             header = lines[0].strip() if lines else ""
@@ -138,10 +141,12 @@ def process_input_file(filepath):
             freq, spec = zip(*data)
             freq = np.array(freq)
             spec = np.array(spec)
+            
+            return freq, spec, header, input_logn, input_tex
 
     except UnicodeDecodeError:
+        # Try as text file (Latin-1)
         try:
-            # .TXT with Codex UTF-8
             with open(filepath, 'r', encoding='latin-1') as file:
                 lines = file.readlines()
                 header = lines[0].strip() if lines else ""
@@ -173,58 +178,66 @@ def process_input_file(filepath):
                 freq, spec = zip(*data)
                 freq = np.array(freq)
                 spec = np.array(spec)
+                
+                return freq, spec, header, input_logn, input_tex
 
         except Exception as e_text:
+            # No hacer nada aquí, para poder continuar con el siguiente intento
+            print(f"Warning: Failed to process as text file: {e_text}")
+    
+    # Try as .SPEC (ZIP) file
+    try:
+        if zipfile.is_zipfile(filepath):
+            extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
+            os.makedirs(extract_folder, exist_ok=True)
             try:
-                # .SPEC and Uncompress .ZIP into .FITS
-                if zipfile.is_zipfile(filepath):
-                    extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
-                    os.makedirs(extract_folder, exist_ok=True)
+                with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                    zip_ref.extractall(extract_folder)
+
+                fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
+                if fits_files:
+                    fits_file_path = os.path.join(extract_folder, fits_files[0])
                     try:
-                        with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                            zip_ref.extractall(extract_folder)
+                        with fits.open(fits_file_path) as hdul:
+                            table = hdul[1].data
+                            all_freqs = []
+                            all_intensities = []
+                            for row in table:
+                                spectrum = row['DATA']
+                                crval3 = row['CRVAL3']
+                                cdelt3 = row['CDELT3']
+                                crpix3 = row['CRPIX3']
+                                n = len(spectrum)
+                                channels = np.arange(n)
+                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+                                all_freqs.append(frequencies)
+                                all_intensities.append(spectrum)
 
-                        fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
-                        if fits_files:
-                            fits_file_path = os.path.join(extract_folder, fits_files[0])
-                            try:
-                                with fits.open(fits_file_path) as hdul:
-                                    table = hdul[1].data
-                                    all_freqs = []
-                                    all_intensities = []
-                                    for row in table:
-                                        spectrum = row['DATA']
-                                        crval3 = row['CRVAL3']
-                                        cdelt3 = row['CDELT3']
-                                        crpix3 = row['CRPIX3']
-                                        n = len(spectrum)
-                                        channels = np.arange(n)
-                                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-                                        all_freqs.append(frequencies)
-                                        all_intensities.append(spectrum)
-
-                                    combined_freqs = np.concatenate(all_freqs)
-                                    combined_intensities = np.concatenate(all_intensities)
-                                    sorted_indices = np.argsort(combined_freqs)
-                                    freq = combined_freqs[sorted_indices]
-                                    spec = combined_intensities[sorted_indices]
-                                    header = f"Processed from FITS file within {os.path.basename(filepath)}"
-                            except Exception as e_fits:
-                                raise ValueError(f"Error processing FITS file: {e_fits}")
-                        else:
-                            raise FileNotFoundError("No se encontró ningún archivo .fits dentro del .spec.")
-                    finally:
-                        # Limpiar la carpeta temporal
-                        for root, dirs, files in os.walk(extract_folder, topdown=False):
-                            for name in files:
-                                os.remove(os.path.join(root, name))
-                            for name in dirs:
-                                os.rmdir(os.path.join(root, name))
-                        os.rmdir(extract_folder)
+                            combined_freqs = np.concatenate(all_freqs)
+                            combined_intensities = np.concatenate(all_intensities)
+                            sorted_indices = np.argsort(combined_freqs)
+                            freq = combined_freqs[sorted_indices]
+                            spec = combined_intensities[sorted_indices]
+                            header = f"Processed from FITS file within {os.path.basename(filepath)}"
+                            
+                            return freq, spec, header, input_logn, input_tex
+                    except Exception as e_fits:
+                        raise ValueError(f"Error processing FITS file: {e_fits}")
                 else:
-                    raise ValueError(f"El archivo no es un archivo de texto legible ni un archivo .spec válido: {e_text}")
-            except Exception as e_zip:
-                raise ValueError(f"Error al procesar el archivo: {e_zip}")
+                    raise FileNotFoundError("No se encontró ningún archivo .fits dentro del .spec.")
+            finally:
+                # Limpiar la carpeta temporal
+                for root, dirs, files in os.walk(extract_folder, topdown=False):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
+                os.rmdir(extract_folder)
+    except Exception as e_zip:
+        print(f"Warning: Failed to process as ZIP/SPEC file: {e_zip}")
+
+    # Si llegamos aquí, ningún método funcionó
+    raise ValueError(f"No se pudo procesar el archivo {filepath} en ninguno de los formatos soportados")
 
     return freq, spec, header, input_logn, input_tex
 
