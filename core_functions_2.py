@@ -63,6 +63,12 @@ def find_input_file(filepath):
     
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
+import re
+import os
+import zipfile
+import numpy as np
+from astropy.io import fits
+
 def process_input_file(filepath):
     input_logn = None
     input_tex = None
@@ -71,159 +77,114 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # --- Nuevo caso: Archivo .FITS directo ---
+        # Caso 1: Archivo .FITS directo (nuevo)
         if filepath.lower().endswith('.fits'):
             with fits.open(filepath) as hdul:
-                table = hdul[1].data  # Asume que los datos están en la extensión 1 (común en espectros)
-                all_freqs = []
-                all_intensities = []
-                for row in table:
-                    spectrum = row['DATA']
-                    crval3 = row['CRVAL3']  # Frecuencia inicial (Hz)
-                    cdelt3 = row['CDELT3']  # Incremento de frecuencia por canal
-                    crpix3 = row['CRPIX3']  # Píxel de referencia
-                    n = len(spectrum)
-                    channels = np.arange(n)
-                    frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # Frecuencias en Hz
-                    all_freqs.append(frequencies)
-                    all_intensities.append(spectrum)
-
-                combined_freqs = np.concatenate(all_freqs)
-                combined_intensities = np.concatenate(all_intensities)
-                sorted_indices = np.argsort(combined_freqs)
-                freq = combined_freqs[sorted_indices]
-                spec = combined_intensities[sorted_indices]
-                header = f"Processed from direct FITS file: {os.path.basename(filepath)}"
-                # Intenta extraer logn y tex del header (opcional)
+                # Intenta extraer logn y tex del header primario
                 try:
-                    header_str = str(hdul[0].header)  # Header primario
+                    header_str = str(hdul[0].header)
                     input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header_str.lower())
                     if input_params:
                         input_logn = float(input_params.group(1))
                         input_tex = float(input_params.group(2))
+                    header = f"FITS header: {header_str[:100]}..."  # Resumen del header
                 except:
-                    pass  # Si no encuentra los parámetros, los deja como None
+                    pass
+
+                # Procesamiento de datos (adaptado de tu referencia)
+                table = hdul[1].data
+                all_freqs = []
+                all_intensities = []
+                
+                for row in table:
+                    spectrum = row['DATA']
+                    crval3 = row['CRVAL3']  # Frecuencia inicial (Hz)
+                    cdelt3 = row['CDELT3']  # Paso espectral (Hz)
+                    crpix3 = row['CRPIX3']  # Píxel de referencia
+                    
+                    n = len(spectrum)
+                    freqs = crval3 + (np.arange(n) + 1 - crpix3) * cdelt3
+                    
+                    all_freqs.append(freqs)
+                    all_intensities.append(spectrum)
+
+                # Combina y ordena los datos
+                if all_freqs:
+                    freq = np.concatenate(all_freqs)
+                    spec = np.concatenate(all_intensities)
+                    sorted_idx = np.argsort(freq)
+                    freq = freq[sorted_idx]
+                    spec = spec[sorted_idx]
+                else:
+                    raise ValueError("No se encontraron datos espectrales en el archivo FITS")
+
             return freq, spec, header, input_logn, input_tex
 
-        # --- Lógica original para .TXT y .ZIP/.SPEC ---
+        # Caso 2: Archivo de texto (.TXT)
         try:
-            # .TXT con UTF-8
+            # Intenta con UTF-8 primero
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
-                header = lines[0].strip() if lines else ""
-                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-                if input_params:
-                    try:
-                        input_logn = float(input_params.group(1))
-                        input_tex = float(input_params.group(2))
-                    except (ValueError, TypeError):
-                        input_logn = None
-                        input_tex = None
-
-                data = []
-                for line in lines[1:]:
-                    line = line.strip()
-                    if line and not line.startswith(("//", "#")):
-                        parts = re.split(r'[\s,;]+', line)
-                        if len(parts) >= 2:
-                            try:
-                                frequency = float(parts[0]) * 1e9  # Convierte a Hz
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
-                            except ValueError:
-                                continue
-
-                if len(data) < 10:
-                    raise ValueError("Insufficient valid data points in spectrum")
-
-                freq, spec = zip(*data)
-                freq = np.array(freq)
-                spec = np.array(spec)
-
         except UnicodeDecodeError:
-            # .TXT con Latin-1 (código original)
+            # Fallback a Latin-1
+            with open(filepath, 'r', encoding='latin-1') as file:
+                lines = file.readlines()
+
+        # Procesamiento de texto (original)
+        header = lines[0].strip() if lines else ""
+        input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
+        if input_params:
             try:
-                with open(filepath, 'r', encoding='latin-1') as file:
-                    lines = file.readlines()
-                    header = lines[0].strip() if lines else ""
-                    input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-                    if input_params:
-                        try:
-                            input_logn = float(input_params.group(1))
-                            input_tex = float(input_params.group(2))
-                        except (ValueError, TypeError):
-                            input_logn = None
-                            input_tex = None
+                input_logn = float(input_params.group(1))
+                input_tex = float(input_params.group(2))
+            except (ValueError, TypeError):
+                input_logn = input_tex = None
 
-                    data = []
-                    for line in lines[1:]:
-                        line = line.strip()
-                        if line and not line.startswith(("//", "#")):
-                            parts = re.split(r'[\s,;]+', line)
-                            if len(parts) >= 2:
-                                try:
-                                    frequency = float(parts[0]) * 1e9
-                                    intensity = float(parts[1])
-                                    data.append((frequency, intensity))
-                                except ValueError:
-                                    continue
+        data = []
+        for line in lines[1:]:
+            line = line.strip()
+            if line and not line.startswith(("//", "#")):
+                parts = re.split(r'[\s,;]+', line)
+                if len(parts) >= 2:
+                    try:
+                        freq_ghz = float(parts[0])
+                        intensity = float(parts[1])
+                        data.append((freq_ghz * 1e9, intensity))  # Convertir GHz a Hz
+                    except ValueError:
+                        continue
 
-                    if len(data) < 10:
-                        raise ValueError("Insufficient valid data points in spectrum")
+        if len(data) < 10:
+            raise ValueError("Insufficient valid data points (<10)")
 
-                    freq, spec = zip(*data)
-                    freq = np.array(freq)
-                    spec = np.array(spec)
+        freq, spec = zip(*data)
+        freq = np.array(freq)
+        spec = np.array(spec)
 
-            except Exception as e_text:
-                # .ZIP/.SPEC (código original)
-                try:
-                    if zipfile.is_zipfile(filepath):
-                        extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
-                        os.makedirs(extract_folder, exist_ok=True)
-                        try:
-                            with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                                zip_ref.extractall(extract_folder)
+    except (UnicodeDecodeError, ValueError) as e:
+        # Caso 3: Archivo .SPEC/.ZIP (original)
+        if not zipfile.is_zipfile(filepath):
+            raise ValueError(f"Formato no soportado: {filepath}") from e
 
-                            fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
-                            if fits_files:
-                                fits_file_path = os.path.join(extract_folder, fits_files[0])
-                                with fits.open(fits_file_path) as hdul:
-                                    table = hdul[1].data
-                                    all_freqs = []
-                                    all_intensities = []
-                                    for row in table:
-                                        spectrum = row['DATA']
-                                        crval3 = row['CRVAL3']
-                                        cdelt3 = row['CDELT3']
-                                        crpix3 = row['CRPIX3']
-                                        n = len(spectrum)
-                                        channels = np.arange(n)
-                                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3
-                                        all_freqs.append(frequencies)
-                                        all_intensities.append(spectrum)
+        extract_folder = f"temp_unzip_{os.path.basename(filepath)}"
+        try:
+            with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                zip_ref.extractall(extract_folder)
 
-                                    combined_freqs = np.concatenate(all_freqs)
-                                    combined_intensities = np.concatenate(all_intensities)
-                                    sorted_indices = np.argsort(combined_freqs)
-                                    freq = combined_freqs[sorted_indices]
-                                    spec = combined_intensities[sorted_indices]
-                                    header = f"Processed from FITS file within {os.path.basename(filepath)}"
-                        finally:
-                            # Limpieza de carpeta temporal
-                            for root, dirs, files in os.walk(extract_folder, topdown=False):
-                                for name in files:
-                                    os.remove(os.path.join(root, name))
-                                for name in dirs:
-                                    os.rmdir(os.path.join(root, name))
-                            os.rmdir(extract_folder)
-                    else:
-                        raise ValueError(f"Unsupported file format: {e_text}")
-                except Exception as e_zip:
-                    raise ValueError(f"Error processing file: {e_zip}")
+            fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
+            if not fits_files:
+                raise FileNotFoundError("No hay archivos .fits en el ZIP")
 
-    except Exception as e:
-        raise ValueError(f"Unexpected error: {e}")
+            # Procesa el primer .fits encontrado (como en el caso directo)
+            fits_path = os.path.join(extract_folder, fits_files[0])
+            freq, spec, header, _, _ = process_input_file(fits_path)  # Recursividad
+            header = f"From ZIP: {header}"
+
+        finally:
+            # Limpieza de archivos temporales
+            for root, _, files in os.walk(extract_folder, topdown=False):
+                for f in files:
+                    os.remove(os.path.join(root, f))
+                os.rmdir(root)
 
     return freq, spec, header, input_logn, input_tex
 
