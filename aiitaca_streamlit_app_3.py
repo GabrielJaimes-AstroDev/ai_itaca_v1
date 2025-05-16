@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions_2 import *
+from core_functions import *
 import tempfile
 import plotly.graph_objects as go
 import tensorflow as tf
@@ -257,7 +257,7 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1PyAGVOum6MWE_2PDqysvrr_dg_acg-v8?usp=drive_link"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1zlnkEoRvHR1CoK9hXxD0Jy4JIKF5Uybz?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
@@ -319,9 +319,9 @@ st.sidebar.title("Configuration")
 model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
 input_file = st.sidebar.file_uploader(
-    "Input Spectrum File",
+    "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
     type=None,
-    help="Drag and drop file here. Limit 200MB per file"
+    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
 )
 
 st.sidebar.subheader("Peak Matching Parameters")
@@ -613,7 +613,7 @@ else:
 st.sidebar.markdown("""
 **Instructions:**
 1. Select the directory containing the trained models
-2. Upload your input spectrum file 
+2. Upload your input spectrum file ( . | .txt | .dat | .fits | .spec )
 3. Adjust the peak matching parameters as needed
 4. Select the model to use for analysis
 5. Click 'Analyze Spectrum' to run the analysis
