@@ -63,12 +63,6 @@ def find_input_file(filepath):
     
     raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
-import re
-import os
-import zipfile
-import numpy as np
-from astropy.io import fits
-
 def process_input_file(filepath):
     input_logn = None
     input_tex = None
@@ -77,7 +71,7 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # Primero intentamos como archivo de texto
+        # .TXT
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
@@ -111,7 +105,7 @@ def process_input_file(filepath):
                     return freq, spec, header, input_logn, input_tex
 
         except UnicodeDecodeError:
-            # Si falla UTF-8, probamos con latin-1
+            # .TXT Codex UTF-8, latin-1
             with open(filepath, 'r', encoding='latin-1') as file:
                 lines = file.readlines()
                 header = lines[0].strip() if lines else ""
@@ -143,7 +137,7 @@ def process_input_file(filepath):
                     spec = np.array(spec)
                     return freq, spec, header, input_logn, input_tex
 
-        # Si no es texto válido, probamos como FITS
+        # .FITS
         try:
             with fits.open(filepath) as hdul:
                 if len(hdul) > 1:  # Asegurarnos que tiene extensión de datos
@@ -176,7 +170,7 @@ def process_input_file(filepath):
                     return freq, spec, header, input_logn, input_tex
 
         except Exception as e_fits:
-            # Si falla como FITS, probamos con archivo .spec (zip)
+            # .SPEC
             if zipfile.is_zipfile(filepath):
                 extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
                 os.makedirs(extract_folder, exist_ok=True)
@@ -228,7 +222,6 @@ def process_input_file(filepath):
         raise ValueError(f"Error al procesar el archivo {filepath}: {str(e)}")
 
     raise ValueError("No se pudo procesar el archivo con ningún método conocido")
-
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
     train_min_freq = np.min(train_freq)
