@@ -66,7 +66,7 @@ import re
 import numpy as np
 from astropy.io import fits
 
-def process_input_spectrum(filepath):
+def process_input_file(filepath):
     input_logn = None
     input_tex = None
     header = ""
