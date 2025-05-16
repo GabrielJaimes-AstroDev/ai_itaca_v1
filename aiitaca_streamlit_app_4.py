@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions import *
+from core_functions_2 import *
 import tempfile
 import plotly.graph_objects as go
 import tensorflow as tf
@@ -255,13 +255,15 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 <strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
 </div>
 """, unsafe_allow_html=True)
+
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1zlnkEoRvHR1CoK9hXxD0Jy4JIKF5Uybz?usp=drive_link"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1PyAGVOum6MWE_2PDqysvrr_dg_acg-v8?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
+@st.cache_data(show_spinner=True)
 @st.cache_data(show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
     model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
@@ -274,103 +276,40 @@ def download_models_from_drive(folder_url, output_dir):
         progress_text = st.sidebar.empty()
         progress_bar = st.sidebar.progress(0)
         progress_text.text("📥 Preparing to download models...")
-
-        # Extract folder ID from URL
-        folder_id = re.search(r'folders/([a-zA-Z0-9-_]+)', folder_url).group(1)
-        if not folder_id:
-            raise ValueError("Invalid Google Drive folder URL")
-
-        # Create list of files to download (replace with your actual file IDs and names)
-        file_ids = [
-            ('1ABC123DEF456', 'model1.keras'),
-            ('2DEF456GHI789', 'model2.keras'),
-            ('3GHI789JKL012', 'data1.npz'),
-            # Add all your files here with their IDs and names
-        ]
-
-        total_files = len(file_ids)
-        downloaded_count = 0
         
-        for file_id, filename in file_ids:
-            # Update progress for current file
-            def update_progress(percent):
-                overall_percent = (downloaded_count * 100 + percent) / total_files
-                progress_bar.progress(overall_percent)
-                progress_text.text(f"📥 Downloading {filename}... {int(overall_percent)}%")
+        # Primero verificamos cuántos archivos hay que descargar
+        file_count = 0
+        try:
+            file_count = 10  # Valor estimado para la simulación
+        except:
+            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
             
-            # Download with wget using cookie workaround
-            temp_cookie = os.path.join(output_dir, "temp_cookie.txt")
-            
-            # First request to get confirmation cookie
-            confirm_cmd = [
-                'wget',
-                '--quiet',
-                '--save-cookies', temp_cookie,
-                '--keep-session-cookies',
-                '--no-check-certificate',
-                f'https://drive.google.com/uc?export=download&id={file_id}',
-                '-O', '/dev/null'
-            ]
-            
-            # Actual download command
-            download_cmd = [
-                'wget',
-                '--quiet',
-                '--show-progress',
-                '--progress=dot:giga',
-                '--load-cookies', temp_cookie,
-                '--no-check-certificate',
-                f'https://drive.google.com/uc?export=download&confirm=t&id={file_id}',
-                '-O', os.path.join(output_dir, filename)
-            ]
-            
-            try:
-                # Run confirmation command
-                subprocess.run(confirm_cmd, check=True)
-                
-                # Run download with progress tracking
-                process = subprocess.Popen(
-                    download_cmd,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True
-                )
-                
-                # Process progress output
-                while True:
-                    output = process.stderr.readline()
-                    if output == '' and process.poll() is not None:
-                        break
-                    if output:
-                        match = re.search(r'(\d+)%', output)
-                        if match:
-                            update_progress(int(match.group(1)))
-                
-                if process.returncode != 0:
-                    raise subprocess.CalledProcessError(process.returncode, download_cmd)
-                
-                downloaded_count += 1
-                
-            except Exception as e:
-                st.warning(f"⚠️ Failed to download {filename}: {str(e)}")
-            finally:
-                if os.path.exists(temp_cookie):
-                    os.remove(temp_cookie)
-
+        with st.spinner("📥 Downloading models from Google Drive..."):
+            gdown.download_folder(
+                folder_url, 
+                output=output_dir, 
+                quiet=True,  # Silenciamos la salida por consola
+                use_cookies=False
+            )
+            for i in range(file_count):
+                time.sleep(0.5)  # Pequeña pausa para simular descarga
+                progress = int((i + 1) / file_count * 100)
+                progress_bar.progress(progress)
+                progress_text.text(f"📥 Downloading models... {progress}%")
+        
         model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
         data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-
+        
         progress_bar.progress(100)
-        progress_text.text("✅ Download completed successfully!")
-
+        progress_text.text("Process Completed")
+        
         if model_files and data_files:
-            st.sidebar.success(f"✅ Successfully downloaded {len(model_files)} models and {len(data_files)} data files!")
+            st.sidebar.success("✅ Models downloaded successfully!")
         else:
-            st.sidebar.error("❌ No valid models or data files found after download")
-
+            st.sidebar.error("❌ No models found in the specified folder")
+            
         return model_files, data_files, True
-
     except Exception as e:
-        progress_text.text("❌ Download failed")
         st.sidebar.error(f"❌ Error downloading models: {str(e)}")
         return [], [], False
 
