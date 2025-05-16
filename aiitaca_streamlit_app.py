@@ -319,9 +319,9 @@ st.sidebar.title("Configuration")
 model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
 input_file = st.sidebar.file_uploader(
-    "Input Spectrum File |'.','txt','dat','spec'|",
+    "Input Spectrum File ( . | .txt | .dat | .spec )",
     type=None,
-    help="Drag and drop file here ('.','txt','dat','spec'). Limit 200MB per file"
+    help="Drag and drop file here ( . | .txt | .dat | .spec ). Limit 200MB per file"
 )
 
 st.sidebar.subheader("Peak Matching Parameters")
@@ -613,7 +613,7 @@ else:
 st.sidebar.markdown("""
 **Instructions:**
 1. Select the directory containing the trained models
-2. Upload your input spectrum file ('.','txt','dat','spec')
+2. Upload your input spectrum file ( . | .txt | .dat | .spec )
 3. Adjust the peak matching parameters as needed
 4. Select the model to use for analysis
 5. Click 'Analyze Spectrum' to run the analysis
