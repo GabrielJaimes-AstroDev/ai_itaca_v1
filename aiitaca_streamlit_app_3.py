@@ -324,6 +324,14 @@ def show_controls_and_plot():
     if 'analysis_results' in st.session_state:
         results = st.session_state['analysis_results']
         
+        # Get current slider values from the sidebar
+        current_sigma_emission = st.session_state.get('sigma_emission_slider', 1.5)
+        current_sigma_threshold = st.session_state.get('sigma_threshold_slider', 2.0)
+        
+        # Update the session state values
+        st.session_state['sigma_emission'] = current_sigma_emission
+        st.session_state['sigma_threshold'] = current_sigma_threshold
+        
         # Controles para mostrar/ocultar las líneas de umbral
         col1, col2 = st.columns(2)
         with col1:
@@ -335,38 +343,32 @@ def show_controls_and_plot():
                                        help="Show/hide the Sigma Threshold line in the plot",
                                        key="show_threshold_checkbox")
         
-        # Actualizar los valores de sigma desde los sliders
-        st.session_state['sigma_emission'] = sigma_emission
-        st.session_state['sigma_threshold'] = sigma_threshold
-        
         # Actualizar el gráfico según los checkboxes
         if 'base_fig' in st.session_state:
             fig = go.Figure(st.session_state['base_fig'])
             
             # Calcular valores para las líneas
             input_spec = results['input_spec']
-            sigma_line_y = st.session_state['sigma_emission'] * np.std(input_spec)
-            threshold_line_y = st.session_state['sigma_threshold'] * np.std(input_spec)
+            sigma_line_y = current_sigma_emission * np.std(input_spec)
+            threshold_line_y = current_sigma_threshold * np.std(input_spec)
             
             # Añadir líneas según los checkboxes
             if show_sigma:
                 fig.add_hline(y=sigma_line_y, line_dash="dot",
-                             annotation_text=f"Sigma Emission: {st.session_state['sigma_emission']}",
+                             annotation_text=f"Sigma Emission: {current_sigma_emission:.1f}",
                              annotation_position="bottom right",
                              line_color="yellow")
             
             if show_threshold:
                 fig.add_hline(y=threshold_line_y, line_dash="dot",
-                             annotation_text=f"Sigma Threshold: {st.session_state['sigma_threshold']}",
+                             annotation_text=f"Sigma Threshold: {current_sigma_threshold:.1f}",
                              annotation_position="bottom left",
                              line_color="cyan")
             
             # Mostrar el gráfico actualizado
             st.plotly_chart(fig, use_container_width=True, key="interactive_plot")
 
-# Mostrar controles si el análisis ya se realizó
-if 'analysis_results' in st.session_state:
-    show_controls_and_plot()
+
 
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
@@ -380,9 +382,10 @@ input_file = st.sidebar.file_uploader(
 )
 
 st.sidebar.subheader("Peak Matching Parameters")
-sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1)
+sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
+sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
+
 window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
-sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1)
 fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
 tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
 min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
