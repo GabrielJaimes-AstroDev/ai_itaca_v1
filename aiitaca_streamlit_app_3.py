@@ -278,8 +278,54 @@ if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
 @st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
-    # ... (mantén la función de descarga igual que antes) ...
+    model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
+    data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
+
+    if model_files and data_files:
+        return model_files, data_files, True
+
+    try:
+        progress_text = st.sidebar.empty()
+        progress_bar = st.sidebar.progress(0)
+        progress_text.text("📥 Preparing to download models...")
+        
+        # Primero verificamos cuántos archivos hay que descargar
+        file_count = 0
+        try:
+            file_count = 10  # Valor estimado para la simulación
+        except:
+            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
+            
+        with st.spinner("📥 Downloading models from Google Drive..."):
+            gdown.download_folder(
+                folder_url, 
+                output=output_dir, 
+                quiet=True,  # Silenciamos la salida por consola
+                use_cookies=False
+            )
+            for i in range(file_count):
+                time.sleep(0.5)  # Pequeña pausa para simular descarga
+                progress = int((i + 1) / file_count * 100)
+                progress_bar.progress(progress)
+                progress_text.text(f"📥 Downloading models... {progress}%")
+        
+        model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
+        data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
+        
+        progress_bar.progress(100)
+        progress_text.text("Process Completed")
+        
+        if model_files and data_files:
+            st.sidebar.success("✅ Models downloaded successfully!")
+        else:
+            st.sidebar.error("❌ No models found in the specified folder")
+            
+        return model_files, data_files, True
+    except Exception as e:
+        st.sidebar.error(f"❌ Error downloading models: {str(e)}")
+        return [], [], False
 
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
@@ -394,7 +440,7 @@ if input_file is not None:
                         y=results['input_spec'],
                         mode='lines',
                         name='Input Spectrum',
-                        line=dict(color='white', width=2))
+                        line=dict(color='white', width=2)))
                     
                     fig.add_trace(go.Scatter(
                         x=results['best_match']['x_synth'],
