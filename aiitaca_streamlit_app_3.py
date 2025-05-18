@@ -523,14 +523,14 @@ if input_file is not None:
                         y=results['input_spec'],
                         mode='lines',
                         name='Input Spectrum',
-                        line=dict(color='white', width=2))
+                        line=dict(color='white', width=2)))
                     
                     fig.add_trace(go.Scatter(
                         x=results['best_match']['x_synth'],
                         y=results['best_match']['y_synth'],
                         mode='lines',
                         name='Best Match',
-                        line=dict(color='red', width=2))
+                        line=dict(color='red', width=2)))
                     
                     fig.update_layout(
                         plot_bgcolor='#0D0F14',
