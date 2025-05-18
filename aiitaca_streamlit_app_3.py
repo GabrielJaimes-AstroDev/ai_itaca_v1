@@ -291,7 +291,6 @@ def download_models_from_drive(folder_url, output_dir):
         progress_bar = st.sidebar.progress(0)
         progress_text.text("📥 Preparing to download models...")
         
-        # Primero verificamos cuántos archivos hay que descargar
         file_count = 0
         try:
             file_count = 10  # Valor estimado para la simulación
@@ -366,7 +365,7 @@ config = {
 # === MAIN APP ===
 st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
-# Nuevos botones de información debajo del título principal con espacio
+# PARAMETERS EXPLANATION
 st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
 col1, col2 = st.columns([0.5, 0.5])
 with col1:
@@ -421,7 +420,7 @@ if params_tab:
         </div>
         """, unsafe_allow_html=True)
 
-# Mostrar el diagrama de flujo si se hace clic
+# FLOW OF WORK
 if flow_tab:
     with st.container():
         st.markdown("""
@@ -510,11 +509,9 @@ if input_file is not None:
                     update_analysis_progress(6)
                     st.success("Analysis completed successfully!")
 
-                    # Guardar los resultados en session_state
                     st.session_state['analysis_results'] = results
                     st.session_state['analysis_done'] = True
                     
-                    # Crear y guardar el gráfico base
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(
                         x=results['input_freq'],
@@ -581,7 +578,6 @@ if input_file is not None:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Controles para las líneas de umbral
                 col1, col2 = st.columns(2)
                 with col1:
                     show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
@@ -590,10 +586,8 @@ if input_file is not None:
                     show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
                                                key="show_threshold_checkbox")
                 
-                # Obtener el gráfico base
                 fig = go.Figure(st.session_state['base_fig'])
                 
-                # Añadir líneas según los checkboxes
                 if show_sigma:
                     sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
                     fig.add_hline(y=sigma_line_y, line_dash="dot",
