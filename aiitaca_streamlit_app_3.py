@@ -319,6 +319,55 @@ def download_models_from_drive(folder_url, output_dir):
         st.sidebar.error(f"❌ Error downloading models: {str(e)}")
         return [], [], False
 
+def show_controls_and_plot():
+    """Muestra los controles y el gráfico actualizado"""
+    if 'analysis_results' in st.session_state:
+        results = st.session_state['analysis_results']
+        
+        # Controles para mostrar/ocultar las líneas de umbral
+        col1, col2 = st.columns(2)
+        with col1:
+            show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
+                                   help="Show/hide the Sigma Emission threshold line in the plot",
+                                   key="show_sigma_checkbox")
+        with col2:
+            show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
+                                       help="Show/hide the Sigma Threshold line in the plot",
+                                       key="show_threshold_checkbox")
+        
+        # Actualizar los valores de sigma desde los sliders
+        st.session_state['sigma_emission'] = sigma_emission
+        st.session_state['sigma_threshold'] = sigma_threshold
+        
+        # Actualizar el gráfico según los checkboxes
+        if 'base_fig' in st.session_state:
+            fig = go.Figure(st.session_state['base_fig'])
+            
+            # Calcular valores para las líneas
+            input_spec = results['input_spec']
+            sigma_line_y = st.session_state['sigma_emission'] * np.std(input_spec)
+            threshold_line_y = st.session_state['sigma_threshold'] * np.std(input_spec)
+            
+            # Añadir líneas según los checkboxes
+            if show_sigma:
+                fig.add_hline(y=sigma_line_y, line_dash="dot",
+                             annotation_text=f"Sigma Emission: {st.session_state['sigma_emission']}",
+                             annotation_position="bottom right",
+                             line_color="yellow")
+            
+            if show_threshold:
+                fig.add_hline(y=threshold_line_y, line_dash="dot",
+                             annotation_text=f"Sigma Threshold: {st.session_state['sigma_threshold']}",
+                             annotation_position="bottom left",
+                             line_color="cyan")
+            
+            # Mostrar el gráfico actualizado
+            st.plotly_chart(fig, use_container_width=True, key="interactive_plot")
+
+# Mostrar controles si el análisis ya se realizó
+if 'analysis_results' in st.session_state:
+    show_controls_and_plot()
+
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
 
@@ -360,14 +409,13 @@ st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
 # Nuevos botones de información debajo del título principal con espacio
 st.markdown('<div class="info-buttons-container"></div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns([3, 1])  # Ajustado para que el segundo botón quede pegado a la derecha
 with col1:
     params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
                           help="Click to show parameters explanation")
 with col2:
     flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
                        help="Click to show the workflow diagram")
-
 if params_tab:
     with st.container():
         st.markdown("""
@@ -506,8 +554,51 @@ if input_file is not None:
                     st.session_state['sigma_emission'] = sigma_emission
                     st.session_state['sigma_threshold'] = sigma_threshold
 
-                    tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                        "Interactive Summary", 
+                    # Crear el gráfico base y guardarlo en session_state
+                    fig = go.Figure()
+                    
+                    fig.add_trace(go.Scatter(
+                        x=results['input_freq'],
+                        y=results['input_spec'],
+                        mode='lines',
+                        name='Input Spectrum',
+                        line=dict(color='white', width=2))
+                    )
+                    
+                    fig.add_trace(go.Scatter(
+                        x=results['best_match']['x_synth'],
+                        y=results['best_match']['y_synth'],
+                        mode='lines',
+                        name='Best Match',
+                        line=dict(color='red', width=2))
+                    )
+                    
+                    fig.update_layout(
+                        plot_bgcolor='#0D0F14',
+                        paper_bgcolor='#0D0F14',
+                        margin=dict(l=50, r=50, t=60, b=50),
+                        xaxis_title='Frequency (GHz)',
+                        yaxis_title='Intensity (K)',
+                        hovermode='x unified',
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
+                        ),
+                        height=600,
+                        font=dict(color='white'),
+                        xaxis=dict(gridcolor='#3A3A3A'),
+                        yaxis=dict(gridcolor='#3A3A3A')
+                    )
+                    
+                    st.session_state['base_fig'] = fig
+                    
+                    # Mostrar controles y gráfico actualizado directamente
+                    show_controls_and_plot()
+
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs([
                         "Molecule Best Match", 
                         "Peak Matching", 
                         "CNN Training", 
