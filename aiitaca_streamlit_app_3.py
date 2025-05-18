@@ -225,6 +225,14 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 15px;
     }
+    
+    /* Contenedor de botones ajustado */
+    .buttons-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -359,8 +367,8 @@ config = {
 st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
 # Nuevos botones de información debajo del título principal con espacio
-st.markdown('<div class="info-buttons-container"></div>', unsafe_allow_html=True)
-col1, col2 = st.columns([1, 1])
+st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
+col1, col2 = st.columns([0.5, 0.5])
 with col1:
     params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
                           help="Click to show parameters explanation")
@@ -503,6 +511,7 @@ if input_file is not None:
 
                     # Guardar los resultados en session_state para acceder después
                     st.session_state['analysis_results'] = results
+                    st.session_state['input_spec'] = results['input_spec']
                     st.session_state['sigma_emission'] = sigma_emission
                     st.session_state['sigma_threshold'] = sigma_threshold
 
@@ -526,7 +535,7 @@ if input_file is not None:
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            # Crear el gráfico inicial y guardarlo en session_state
+                            # Crear el gráfico base y guardarlo en session_state
                             fig = go.Figure()
                             
                             fig.add_trace(go.Scatter(
@@ -568,7 +577,7 @@ if input_file is not None:
                             st.session_state['base_fig'] = fig
                             
                             # Mostrar el gráfico inicial
-                            st.plotly_chart(fig, use_container_width=True, key="interactive_plot")
+                            st.plotly_chart(fig, use_container_width=True, key="main_plot")
 
                     with tab1:
                         if results['best_match']:
@@ -619,7 +628,7 @@ if input_file is not None:
                     os.unlink(tmp_path)
 
 # Mostrar controles para las líneas de umbral si el análisis está completo
-if 'analysis_results' in st.session_state:
+if 'analysis_results' in st.session_state and 'base_fig' in st.session_state:
     results = st.session_state['analysis_results']
     
     # Controles para mostrar/ocultar las líneas de umbral
@@ -633,33 +642,36 @@ if 'analysis_results' in st.session_state:
                                    help="Show/hide the Sigma Threshold line in the plot",
                                    key="show_threshold_checkbox")
     
-    # Actualizar el gráfico según los checkboxes
-    if 'base_fig' in st.session_state:
-        fig = go.Figure(st.session_state['base_fig'])
-        
-        # Calcular valores para las líneas
-        input_spec = results['input_spec']
-        sigma_line_y = st.session_state['sigma_emission'] * np.std(input_spec)
-        threshold_line_y = st.session_state['sigma_threshold'] * np.std(input_spec)
-        
-        # Añadir líneas según los checkboxes
-        if show_sigma:
-            fig.add_hline(y=sigma_line_y, line_dash="dot",
-                         annotation_text=f"Sigma Emission: {st.session_state['sigma_emission']}",
-                         annotation_position="bottom right",
-                         line_color="yellow")
-        
-        if show_threshold:
-            fig.add_hline(y=threshold_line_y, line_dash="dot",
-                         annotation_text=f"Sigma Threshold: {st.session_state['sigma_threshold']}",
-                         annotation_position="bottom left",
-                         line_color="cyan")
-        
-        # Actualizar el gráfico sin necesidad de volver a analizar
-        st.plotly_chart(fig, use_container_width=True, key="updated_interactive_plot")
+    # Obtener los valores actuales de los sliders
+    current_sigma_emission = sigma_emission
+    current_sigma_threshold = sigma_threshold
+    
+    # Actualizar el gráfico con los valores actuales
+    fig = go.Figure(st.session_state['base_fig'])
+    
+    # Calcular valores para las líneas
+    input_spec = st.session_state['input_spec']
+    sigma_line_y = current_sigma_emission * np.std(input_spec)
+    threshold_line_y = current_sigma_threshold * np.std(input_spec)
+    
+    # Añadir líneas según los checkboxes
+    if show_sigma:
+        fig.add_hline(y=sigma_line_y, line_dash="dot",
+                     annotation_text=f"Sigma Emission: {current_sigma_emission}",
+                     annotation_position="bottom right",
+                     line_color="yellow")
+    
+    if show_threshold:
+        fig.add_hline(y=threshold_line_y, line_dash="dot",
+                     annotation_text=f"Sigma Threshold: {current_sigma_threshold}",
+                     annotation_position="bottom left",
+                     line_color="cyan")
+    
+    # Actualizar el gráfico sin necesidad de volver a analizar
+    st.plotly_chart(fig, use_container_width=True, key="updated_plot")
 
-else:
-    st.info("Please upload an input spectrum file to begin analysis.")
+elif input_file is not None:
+    st.info("Please click 'Analyze Spectrum' to process your file.")
 
 # Instructions
 st.sidebar.markdown("""
