@@ -352,6 +352,88 @@ config = {
 # === MAIN APP ===
 st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
+# Nuevos botones de información debajo del título principal
+col1, col2 = st.columns(2)
+with col1:
+    params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
+                          help="Click to show parameters explanation")
+with col2:
+    flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
+                       help="Click to show the workflow diagram")
+
+if params_tab:
+    with st.container():
+        st.markdown("""
+        <div class="description-panel">
+            <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
+            
+        <div style="margin-bottom: 25px;">
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
+        <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
+        
+        <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
+        
+        <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
+        
+        <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
+        </div>
+            
+        <div style="margin-bottom: 25px;">
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
+        <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
+        
+        <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
+        </div>
+        
+        <div>
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
+        <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
+        
+        <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
+        <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
+        </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Mostrar el diagrama de flujo si se hace clic
+if flow_tab:
+    with st.container():
+        st.markdown("""
+            <div class="info-panel">
+                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.image("Flow_of_Work.jpg", use_container_width=True)
+
+        st.markdown("""
+            <div style="margin-top: 20px;">
+            <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
+            <ol style="color: white; padding-left: 20px;">
+            <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
+            <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
+            <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
+            <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
+            <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
+            <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
+            </ol>
+            </div>
+            <div class="pro-tip">
+            <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
 if input_file is not None:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
         tmp_file.write(input_file.getvalue())
@@ -362,93 +444,7 @@ if input_file is not None:
     else:
         selected_model = st.selectbox("Select Molecule Model", model_files)
         
-        # Contenedor para el botón y las pestañas de información
-        col1, col2, col3 = st.columns([2, 2, 2])
-        
-        with col1:
-            analyze_btn = st.button("Analyze Spectrum")
-        
-        with col2:
-            params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
-                                  help="Click to show parameters explanation")
-        
-        with col3:
-            flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
-                               help="Click to show the workflow diagram")
-        
-        if params_tab:
-            with st.container():
-                st.markdown("""
-                <div class="description-panel">
-                    <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
-                    
-                <div style="margin-bottom: 25px;">
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
-                <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
-                
-                <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
-                
-                <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
-                
-                <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
-                </div>
-                    
-                <div style="margin-bottom: 25px;">
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
-                <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
-                
-                <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
-                </div>
-                
-                <div>
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
-                <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
-                
-                <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
-                </div>
-                
-                <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-                <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
-                </div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # Mostrar el diagrama de flujo si se hace clic
-        if flow_tab:
-            with st.container():
-                st.markdown("""
-                    <div class="info-panel">
-                        <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-                    </div>
-                """, unsafe_allow_html=True)
-
-                st.image("Flow_of_Work.jpg", use_container_width=True)
-
-                st.markdown("""
-                    <div style="margin-top: 20px;">
-                    <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-                    <ol style="color: white; padding-left: 20px;">
-                    <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
-                    <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
-                    <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
-                    <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
-                    <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
-                    <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
-                    </ol>
-                    </div>
-                    <div class="pro-tip">
-                    <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
-                    </div>
-                """, unsafe_allow_html=True)
-
+        analyze_btn = st.button("Analyze Spectrum")
 
         if analyze_btn:
             try:
@@ -518,6 +514,10 @@ if input_file is not None:
                             </div>
                             """, unsafe_allow_html=True)
                             
+                            # Checkbox para mostrar/ocultar la línea de Sigma Emission
+                            show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
+                                                   help="Show/hide the Sigma Emission threshold line in the plot")
+                            
                             fig = go.Figure()
                             
                             fig.add_trace(go.Scatter(
@@ -535,6 +535,17 @@ if input_file is not None:
                                 name='Best Match',
                                 line=dict(color='red', width=2))
                             )
+                            
+                            # Añadir línea horizontal para Sigma Emission si está activado
+                            if show_sigma:
+                                # Calcular el valor mínimo del espectro para posicionar la línea
+                                min_y = min(results['input_spec'])
+                                sigma_line_y = sigma_emission * np.std(results['input_spec'])
+                                
+                                fig.add_hline(y=sigma_line_y, line_dash="dot",
+                                            annotation_text=f"Sigma Emission: {sigma_emission}",
+                                            annotation_position="bottom right",
+                                            line_color="yellow")
                             
                             fig.update_layout(
                                 plot_bgcolor='#0D0F14',
