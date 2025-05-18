@@ -271,61 +271,15 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1PyAGVOum6MWE_2PDqysvrr_dg_acg-v8?usp=drive_linkk"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1PyAGVOum6MWE_2PDqysvrr_dg_acg-v8?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
 @st.cache_data(show_spinner=True)
-@st.cache_data(show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
-    model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-    data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-
-    if model_files and data_files:
-        return model_files, data_files, True
-
-    try:
-        progress_text = st.sidebar.empty()
-        progress_bar = st.sidebar.progress(0)
-        progress_text.text("📥 Preparing to download models...")
-        
-        # Primero verificamos cuántos archivos hay que descargar
-        file_count = 0
-        try:
-            file_count = 10  # Valor estimado para la simulación
-        except:
-            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
-            
-        with st.spinner("📥 Downloading models from Google Drive..."):
-            gdown.download_folder(
-                folder_url, 
-                output=output_dir, 
-                quiet=True,  # Silenciamos la salida por consola
-                use_cookies=False
-            )
-            for i in range(file_count):
-                time.sleep(0.5)  # Pequeña pausa para simular descarga
-                progress = int((i + 1) / file_count * 100)
-                progress_bar.progress(progress)
-                progress_text.text(f"📥 Downloading models... {progress}%")
-        
-        model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-        data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-        
-        progress_bar.progress(100)
-        progress_text.text("Process Completed")
-        
-        if model_files and data_files:
-            st.sidebar.success("✅ Models downloaded successfully!")
-        else:
-            st.sidebar.error("❌ No models found in the specified folder")
-            
-        return model_files, data_files, True
-    except Exception as e:
-        st.sidebar.error(f"❌ Error downloading models: {str(e)}")
-        return [], [], False
+    # ... (mantén la función de descarga igual que antes) ...
 
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
@@ -339,9 +293,9 @@ input_file = st.sidebar.file_uploader(
 )
 
 st.sidebar.subheader("Peak Matching Parameters")
-sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1)
+sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
 window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
-sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1)
+sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
 fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
 tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
 min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
@@ -366,88 +320,8 @@ config = {
 # === MAIN APP ===
 st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
-# Nuevos botones de información debajo del título principal con espacio
-st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
-col1, col2 = st.columns([0.5, 0.5])
-with col1:
-    params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
-                          help="Click to show parameters explanation")
-with col2:
-    flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
-                       help="Click to show the workflow diagram")
-
-if params_tab:
-    with st.container():
-        st.markdown("""
-        <div class="description-panel">
-            <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
-            
-        <div style="margin-bottom: 25px;">
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
-        <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
-        
-        <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
-        
-        <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
-        
-        <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
-        </div>
-            
-        <div style="margin-bottom: 25px;">
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
-        <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
-        
-        <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
-        </div>
-        
-        <div>
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
-        <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
-        
-        <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
-        </div>
-        
-        <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-        <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
-        </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# Mostrar el diagrama de flujo si se hace clic
-if flow_tab:
-    with st.container():
-        st.markdown("""
-            <div class="info-panel">
-                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.image("Flow_of_Work.jpg", use_container_width=True)
-
-        st.markdown("""
-            <div style="margin-top: 20px;">
-            <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-            <ol style="color: white; padding-left: 20px;">
-            <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
-            <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
-            <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
-            <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
-            <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
-            <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
-            </ol>
-            </div>
-            <div class="pro-tip">
-            <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
-            </div>
-        """, unsafe_allow_html=True)
+# Botones de información
+# ... (mantén los botones de información igual que antes) ...
 
 if input_file is not None:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
@@ -509,21 +383,18 @@ if input_file is not None:
                     update_analysis_progress(6)
                     st.success("Analysis completed successfully!")
 
-                    # Guardar los resultados en session_state para acceder después
+                    # Guardar los resultados en session_state
                     st.session_state['analysis_results'] = results
-                    st.session_state['input_spec'] = results['input_spec']
-                    st.session_state['input_freq'] = results['input_freq']
-                    st.session_state['best_match'] = results['best_match']
-
-                    # Crear el gráfico base y guardarlo en session_state
-                    fig = go.Figure()
+                    st.session_state['analysis_done'] = True
                     
+                    # Crear y guardar el gráfico base
+                    fig = go.Figure()
                     fig.add_trace(go.Scatter(
                         x=results['input_freq'],
                         y=results['input_spec'],
                         mode='lines',
                         name='Input Spectrum',
-                        line=dict(color='white', width=2)))
+                        line=dict(color='white', width=2))
                     
                     fig.add_trace(go.Scatter(
                         x=results['best_match']['x_synth'],
@@ -553,109 +424,111 @@ if input_file is not None:
                     )
                     
                     st.session_state['base_fig'] = fig
-                    
-                    # Mostrar pestañas con los resultados
-                    tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                        "Interactive Summary", 
-                        "Molecule Best Match", 
-                        "Peak Matching", 
-                        "CNN Training", 
-                        "Top Selection: LogN", 
-                        "Top Selection: Tex"
-                    ])
-
-                    with tab0:
-                        st.markdown(f"""
-                        <div class="summary-panel">
-                            <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
-                            <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
-                            <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
-                            <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Controles para mostrar/ocultar las líneas de umbral
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
-                                                   help="Show/hide the Sigma Emission threshold line in the plot",
-                                                   key="show_sigma_checkbox")
-                        with col2:
-                            show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
-                                                       help="Show/hide the Sigma Threshold line in the plot",
-                                                       key="show_threshold_checkbox")
-                        
-                        # Actualizar el gráfico con los valores actuales
-                        fig = go.Figure(st.session_state['base_fig'])
-                        
-                        # Calcular valores para las líneas
-                        input_spec = st.session_state['input_spec']
-                        sigma_line_y = sigma_emission * np.std(input_spec)
-                        threshold_line_y = sigma_threshold * np.std(input_spec)
-                        
-                        # Añadir líneas según los checkboxes
-                        if show_sigma:
-                            fig.add_hline(y=sigma_line_y, line_dash="dot",
-                                         annotation_text=f"Sigma Emission: {sigma_emission}",
-                                         annotation_position="bottom right",
-                                         line_color="yellow")
-                        
-                        if show_threshold:
-                            fig.add_hline(y=threshold_line_y, line_dash="dot",
-                                         annotation_text=f"Sigma Threshold: {sigma_threshold}",
-                                         annotation_position="bottom left",
-                                         line_color="cyan")
-                        
-                        # Mostrar el gráfico actualizado
-                        st.plotly_chart(fig, use_container_width=True, key="main_plot")
-
-                    with tab1:
-                        if results['best_match']:
-                            st.pyplot(plot_summary_comparison(
-                                results['input_freq'], results['input_spec'],
-                                results['best_match'], tmp_path
-                            ))
-
-                    with tab2:
-                        if results['best_match']:
-                            st.pyplot(plot_zoomed_peaks_comparison(
-                                results['input_spec'], results['input_freq'],
-                                results['best_match']
-                            ))
-
-                    with tab3:
-                        st.pyplot(plot_best_matches(
-                            results['train_logn'], results['train_tex'],
-                            results['similarities'], results['distances'],
-                            results['closest_idx_sim'], results['closest_idx_dist'],
-                            results['train_filenames'], results['input_logn']
-                        ))
-
-                    with tab4:
-                        st.pyplot(plot_tex_metrics(
-                            results['train_tex'], results['train_logn'],
-                            results['similarities'], results['distances'],
-                            results['top_similar_indices'],
-                            results['input_tex'], results['input_logn']
-                        ))
-
-                    with tab5:
-                        st.pyplot(plot_similarity_metrics(
-                            results['train_logn'], results['train_tex'],
-                            results['similarities'], results['distances'],
-                            results['top_similar_indices'],
-                            results['input_logn'], results['input_tex']
-                        ))
-
-                    # Limpiar la barra de progreso al finalizar
-                    progress_bar.empty()
-                    progress_text.empty()
+                    st.session_state['input_spec'] = results['input_spec']
 
                 os.unlink(tmp_path)
             except Exception as e:
                 st.error(f"Error during analysis: {e}")
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
+
+        # Mostrar pestañas si el análisis está completo
+        if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
+            tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                "Interactive Summary", 
+                "Molecule Best Match", 
+                "Peak Matching", 
+                "CNN Training", 
+                "Top Selection: LogN", 
+                "Top Selection: Tex"
+            ])
+
+            with tab0:
+                results = st.session_state['analysis_results']
+                st.markdown(f"""
+                <div class="summary-panel">
+                    <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
+                    <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
+                    <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
+                    <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Controles para las líneas de umbral
+                col1, col2 = st.columns(2)
+                with col1:
+                    show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
+                                           key="show_sigma_checkbox")
+                with col2:
+                    show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
+                                               key="show_threshold_checkbox")
+                
+                # Obtener el gráfico base
+                fig = go.Figure(st.session_state['base_fig'])
+                
+                # Añadir líneas según los checkboxes
+                if show_sigma:
+                    sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
+                    fig.add_hline(y=sigma_line_y, line_dash="dot",
+                                 annotation_text=f"Sigma Emission: {sigma_emission}",
+                                 annotation_position="bottom right",
+                                 line_color="yellow")
+                
+                if show_threshold:
+                    threshold_line_y = sigma_threshold * np.std(st.session_state['input_spec'])
+                    fig.add_hline(y=threshold_line_y, line_dash="dot",
+                                 annotation_text=f"Sigma Threshold: {sigma_threshold}",
+                                 annotation_position="bottom left",
+                                 line_color="cyan")
+                
+                # Mostrar el gráfico
+                st.plotly_chart(fig, use_container_width=True, key="main_plot")
+
+            with tab1:
+                if 'analysis_results' in st.session_state:
+                    results = st.session_state['analysis_results']
+                    st.pyplot(plot_summary_comparison(
+                        results['input_freq'], results['input_spec'],
+                        results['best_match'], tmp_path
+                    ))
+
+            with tab2:
+                if 'analysis_results' in st.session_state:
+                    results = st.session_state['analysis_results']
+                    st.pyplot(plot_zoomed_peaks_comparison(
+                        results['input_spec'], results['input_freq'],
+                        results['best_match']
+                    ))
+
+            with tab3:
+                if 'analysis_results' in st.session_state:
+                    results = st.session_state['analysis_results']
+                    st.pyplot(plot_best_matches(
+                        results['train_logn'], results['train_tex'],
+                        results['similarities'], results['distances'],
+                        results['closest_idx_sim'], results['closest_idx_dist'],
+                        results['train_filenames'], results['input_logn']
+                    ))
+
+            with tab4:
+                if 'analysis_results' in st.session_state:
+                    results = st.session_state['analysis_results']
+                    st.pyplot(plot_tex_metrics(
+                        results['train_tex'], results['train_logn'],
+                        results['similarities'], results['distances'],
+                        results['top_similar_indices'],
+                        results['input_tex'], results['input_logn']
+                    ))
+
+            with tab5:
+                if 'analysis_results' in st.session_state:
+                    results = st.session_state['analysis_results']
+                    st.pyplot(plot_similarity_metrics(
+                        results['train_logn'], results['train_tex'],
+                        results['similarities'], results['distances'],
+                        results['top_similar_indices'],
+                        results['input_logn'], results['input_tex']
+                    ))
 
 # Instructions
 st.sidebar.markdown("""
