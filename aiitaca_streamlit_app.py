@@ -367,13 +367,17 @@ st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
 # PARAMETERS EXPLANATION
 st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
-col1, col2 = st.columns([0.5, 0.5])
+col1, col2, col3 = st.columns([0.5, 0.5, 0.5])
 with col1:
     params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
                           help="Click to show parameters explanation")
 with col2:
     flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
                        help="Click to show the workflow diagram")
+
+with col3:
+    Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
+                       help="Click to show Acknowledgments")
 
 if params_tab:
     with st.container():
@@ -448,6 +452,23 @@ if flow_tab:
             </div>
         """, unsafe_allow_html=True)
 
+
+#ACKNOLEGMENTS
+
+if Acknowledgments_tab:
+    with st.container():
+        st.markdown("""
+            <div class="info-panel">
+                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.image("Acknowledgments.png", use_container_width=True)
+
+        st.markdown("""<div class="description-panel" style="text-align: justify;">
+        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government’s public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
+        </div>
+        """, unsafe_allow_html=True)
 
 if input_file is not None:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
