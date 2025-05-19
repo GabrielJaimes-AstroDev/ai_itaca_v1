@@ -376,7 +376,7 @@ with col2:
                        help="Click to show the workflow diagram")
 
 with col3:
-    Acknowledgments_tab = st.button("Acknowledgments", key="Acknowledgments_tab", 
+    Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
                        help="Click to show Acknowledgments")
 
 if params_tab:
@@ -466,7 +466,7 @@ if Acknowledgments_tab:
         st.image("Acknowledgments.png", use_container_width=True)
 
         st.markdown("""<div class="description-panel" style="text-align: justify;">
-        The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government’s public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan.
+        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government’s public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
         </div>
         """, unsafe_allow_html=True)
 
