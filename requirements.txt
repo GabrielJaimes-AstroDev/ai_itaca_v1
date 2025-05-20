@@ -1,12 +1,12 @@
-streamlit
-numpy
-matplotlib
-plotly
-scikit-learn
-tensorflow
-gdown
-scipy
+streamlit==1.32.0
+numpy==1.24.3
+matplotlib==3.7.1
+plotly==5.18.0
+tensorflow-cpu==2.13.0  # Versión CPU para mayor compatibilidad
+gdown==4.7.1
+scipy==1.11.1
+astropy==5.3.1
+scikit-learn==1.3.0
+pandas==2.0.3
+pillow==10.0.0
 tqdm
-astropy
-pandas
-pillow
