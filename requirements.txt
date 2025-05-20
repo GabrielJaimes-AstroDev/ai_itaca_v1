@@ -8,3 +8,5 @@ gdown
 scipy
 tqdm
 astropy
+pandas
+pillow
