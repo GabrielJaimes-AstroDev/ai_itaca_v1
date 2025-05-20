@@ -342,7 +342,7 @@ sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, ke
 window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
 sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
 fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
-tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
+tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.9, 0.1, step=0.01)
 min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
 top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
 top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
