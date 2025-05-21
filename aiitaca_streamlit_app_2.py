@@ -236,12 +236,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# === HEADER WITH IMAGE AND DESCRIPTION ===
-@st.cache_data
-def load_header_image():
-    return "NGC6523_BVO_2.jpg"
 
-st.image(load_header_image(), use_container_width=True)
+# === HEADER WITH IMAGE AND DESCRIPTION ===
+st.image("NGC6523_BVO_2.jpg", use_container_width=True)
 
 col1, col2 = st.columns([1, 3])
 with col1:
@@ -266,25 +263,22 @@ with col2:
     st.markdown('<p class="subtitle">Molecular Spectrum Analyzer</p>', unsafe_allow_html=True)
 
 # Project description
-@st.cache_data
-def get_project_description():
-    return """
-    <div class="description-panel" style="text-align: justify;">
-    A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
-    <strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
-    </div>
-    """
-
-st.markdown(get_project_description(), unsafe_allow_html=True)
+st.markdown("""
+<div class="description-panel" style="text-align: justify;">
+A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
+<strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
+</div>
+""", unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1PyAGVOum6MWE_2PDqysvrr_dg_acg-v8?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
-@st.cache_resource(show_spinner="📥 Downloading models from Google Drive...")
+@st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
     model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
     data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
@@ -307,11 +301,11 @@ def download_models_from_drive(folder_url, output_dir):
             gdown.download_folder(
                 folder_url, 
                 output=output_dir, 
-                quiet=True,
+                quiet=True,  # Silenciamos la salida por consola
                 use_cookies=False
             )
             for i in range(file_count):
-                time.sleep(0.5)
+                time.sleep(0.5)  # Pequeña pausa para simular descarga
                 progress = int((i + 1) / file_count * 100)
                 progress_bar.progress(progress)
                 progress_text.text(f"📥 Downloading models... {progress}%")
@@ -385,68 +379,62 @@ with col3:
     Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
                        help="Click to show Acknowledgments")
 
-@st.cache_data
-def get_parameters_explanation():
-    return """
-    <div class="description-panel">
-        <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
-        
-    <div style="margin-bottom: 25px;">
-    <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
-    <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
-    
-    <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
-    
-    <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
-    
-    <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
-    </div>
-        
-    <div style="margin-bottom: 25px;">
-    <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
-    <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
-    
-    <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
-    </div>
-    
-    <div>
-    <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
-    <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
-    
-    <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
-    <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
-    </div>
-    
-    <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-    <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
-    </div>
-    </div>
-    """
-
 if params_tab:
     with st.container():
-        st.markdown(get_parameters_explanation(), unsafe_allow_html=True)
-
-@st.cache_data
-def get_flow_of_work():
-    return """
-        <div class="info-panel">
-            <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
+        st.markdown("""
+        <div class="description-panel">
+            <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
+            
+        <div style="margin-bottom: 25px;">
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
+        <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
+        
+        <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
+        
+        <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
+        
+        <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
         </div>
-    """
+            
+        <div style="margin-bottom: 25px;">
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
+        <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
+        
+        <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
+        </div>
+        
+        <div>
+        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
+        <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
+        
+        <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
+        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
+        <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
+        </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # FLOW OF WORK
 if flow_tab:
     with st.container():
-        st.markdown(get_flow_of_work(), unsafe_allow_html=True)
+        st.markdown("""
+            <div class="info-panel">
+                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
         st.image("Flow_of_Work.jpg", use_container_width=True)
+
         st.markdown("""
             <div style="margin-top: 20px;">
             <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
@@ -464,34 +452,23 @@ if flow_tab:
             </div>
         """, unsafe_allow_html=True)
 
-@st.cache_data
-def get_acknowledgments():
-    return """
-        <div class="info-panel">
-            <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
-        </div>
-    """
 
-# ACKNOWLEDGMENTS
+#ACKNOLEGMENTS
+
 if Acknowledgments_tab:
     with st.container():
-        st.markdown(get_acknowledgments(), unsafe_allow_html=True)
-        st.image("Acknowledgments.png", use_container_width=True)
-        st.markdown("""<div class="description-panel" style="text-align: justify;">
-        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
-        </div>
+        st.markdown("""
+            <div class="info-panel">
+                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+            </div>
         """, unsafe_allow_html=True)
 
-@st.cache_resource
-def load_model(model_path):
-    return tf.keras.models.load_model(model_path)
+        st.image("Acknowledgments.png", use_container_width=True)
 
-def analyze_spectrum_wrapper(tmp_path, model, train_data, train_freq, filenames, headers, train_logn, train_tex, config, mol_name):
-    return analyze_spectrum(
-        tmp_path, model, train_data, train_freq,
-        filenames, headers, train_logn, train_tex,
-        config, mol_name
-    )
+        st.markdown("""<div class="description-panel" style="text-align: justify;">
+        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government’s public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
+        </div>
+        """, unsafe_allow_html=True)
 
 if input_file is not None:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
@@ -528,7 +505,7 @@ if input_file is not None:
                 mol_name = selected_model.replace('_model.keras', '')
 
                 model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
-                model = load_model(model_path)
+                model = tf.keras.models.load_model(model_path)
 
                 update_analysis_progress(2)
                 data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
@@ -544,7 +521,7 @@ if input_file is not None:
                         filenames = data['filenames']
 
                     update_analysis_progress(3)
-                    results = analyze_spectrum_wrapper(
+                    results = analyze_spectrum(
                         tmp_path, model, train_data, train_freq,
                         filenames, headers, train_logn, train_tex,
                         config, mol_name
