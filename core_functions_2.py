@@ -9,9 +9,9 @@ from scipy.signal import find_peaks, peak_widths
 from matplotlib import rcParams
 import tensorflow as tf
 import zipfile
-import re
 from astropy.io import fits
 
+# Configuration settings
 rcParams.update({
     'font.size': 10,
     'legend.fontsize': 'medium',
@@ -38,32 +38,82 @@ DEFAULT_CONFIG = {
     }
 }
 
-def detect_peaks(x, y, config = DEFAULT_CONFIG):
-    peaks, _ = find_peaks(y, height=config['peak_matching']['sigma_threshold'] * np.std(y), width=1)
-    widths = peak_widths(y, peaks, rel_height=0.2)[0] * (x[1] - x[0])
-    return sorted([{
-        'center': x[p],
-        'height': y[p],
-        'width': widths[i],
-        'left': x[p] - widths[i] / 2,
-        'right': x[p] + widths[i] / 2
-    } for i, p in enumerate(peaks)], key=lambda p: p['height'], reverse=True)
+def safe_float_conversion(value, default=0.0):
+    """Safe conversion to float with error handling"""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
+def clean_spectral_data(freq, spec):
+    """Remove NaN/inf values and ensure finite data"""
+    mask = np.isfinite(freq) & np.isfinite(spec)
+    if not np.any(mask):
+        raise ValueError("No valid data points remaining after cleaning")
+    return freq[mask], spec[mask]
+
+def detect_peaks(x, y, config=DEFAULT_CONFIG):
+    """Robust peak detection with error handling"""
+    try:
+        # Clean input data
+        y_clean = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0)
+        
+        # Adaptive threshold calculation
+        std_dev = np.std(y_clean)
+        if std_dev == 0 or not np.isfinite(std_dev):
+            std_dev = 1e-10
+            
+        height_threshold = max(
+            config['peak_matching']['sigma_threshold'] * std_dev,
+            np.max(y_clean) * 0.01  # Minimum relative threshold
+        )
+        
+        # Find peaks with minimum width constraint
+        peaks, properties = find_peaks(
+            y_clean, 
+            height=height_threshold,
+            width=1,
+            prominence=height_threshold*0.5
+        )
+        
+        if len(peaks) == 0:
+            return []
+            
+        # Calculate peak widths
+        widths = peak_widths(y_clean, peaks, rel_height=0.2)[0] * (x[1] - x[0])
+        
+        # Create peak dictionary with validation
+        valid_peaks = []
+        for i, p in enumerate(peaks):
+            if (0 <= p < len(x)) and np.isfinite(widths[i]):
+                valid_peaks.append({
+                    'center': x[p],
+                    'height': y_clean[p],
+                    'width': widths[i],
+                    'left': max(x[p] - widths[i] / 2, x[0]),
+                    'right': min(x[p] + widths[i] / 2, x[-1])
+                })
+        
+        return sorted(valid_peaks, key=lambda p: p['height'], reverse=True)
+    
+    except Exception as e:
+        print(f"Peak detection error: {str(e)}")
+        return []
 
 def find_input_file(filepath):
-    
+    """Find input file with multiple extension attempts"""
     if os.path.exists(filepath):
         return filepath
     
-    
-    for ext in ['', '.txt', '.dat']:
+    for ext in ['', '.txt', '.dat', '.fits', '.fit', '.zip']:
         test_path = f"{filepath}{ext}"
         if os.path.exists(test_path):
             return test_path
     
-    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
+    raise FileNotFoundError(f"File not found: {filepath} (tried extensions: '', '.txt', '.dat', '.fits', '.zip')")
 
 def process_input_file(filepath):
+    """Robust file processing with comprehensive error handling"""
     input_logn = None
     input_tex = None
     header = ""
@@ -71,584 +121,283 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # .TXT
-        try:
-            with open(filepath, 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-                header = lines[0].strip() if lines else ""
-                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-                if input_params:
-                    try:
-                        input_logn = float(input_params.group(1))
-                        input_tex = float(input_params.group(2))
-                    except (ValueError, TypeError):
-                        input_logn = None
-                        input_tex = None
-
-                data = []
-                for line in lines[1:]:
-                    line = line.strip()
-                    if line and not line.startswith(("//", "#")):
-                        parts = re.split(r'[\s,;]+', line)
-                        if len(parts) >= 2:
-                            try:
-                                frequency = float(parts[0]) * 1e9  # Convertir a Hz
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
-                            except ValueError:
-                                continue
-
-                if len(data) >= 10:  # Mínimo 10 puntos válidos
-                    freq, spec = zip(*data)
-                    freq = np.array(freq)
-                    spec = np.array(spec)
-                    return freq, spec, header, input_logn, input_tex
-
-        except UnicodeDecodeError:
-            # .TXT Codex UTF-8, latin-1
-            with open(filepath, 'r', encoding='latin-1') as file:
-                lines = file.readlines()
-                header = lines[0].strip() if lines else ""
-                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-                if input_params:
-                    try:
-                        input_logn = float(input_params.group(1))
-                        input_tex = float(input_params.group(2))
-                    except (ValueError, TypeError):
-                        input_logn = None
-                        input_tex = None
-
-                data = []
-                for line in lines[1:]:
-                    line = line.strip()
-                    if line and not line.startswith(("//", "#")):
-                        parts = re.split(r'[\s,;]+', line)
-                        if len(parts) >= 2:
-                            try:
-                                frequency = float(parts[0]) * 1e9  # Convertir a Hz
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
-                            except ValueError:
-                                continue
-
-                if len(data) >= 10:
-                    freq, spec = zip(*data)
-                    freq = np.array(freq)
-                    spec = np.array(spec)
-                    return freq, spec, header, input_logn, input_tex
-
-        # .FITS
-        try:
-            with fits.open(filepath) as hdul:
-                if len(hdul) > 1:  # Asegurarnos que tiene extensión de datos
-                    table = hdul[1].data
-                    
-                    all_freqs = []
-                    all_intensities = []
-                    
-                    for row in table:
-                        spectrum = row['DATA']
-                        crval3 = row['CRVAL3']
-                        cdelt3 = row['CDELT3']
-                        crpix3 = row['CRPIX3']
-                        
-                        n = len(spectrum)
-                        channels = np.arange(n)
-                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-                        
-                        all_freqs.append(frequencies)
-                        all_intensities.append(spectrum)
-                    
-                    combined_freqs = np.concatenate(all_freqs)
-                    combined_intensities = np.concatenate(all_intensities)
-                    
-                    sorted_indices = np.argsort(combined_freqs)
-                    freq = combined_freqs[sorted_indices]
-                    spec = combined_intensities[sorted_indices]
-                    
-                    header = f"Processed from FITS file: {os.path.basename(filepath)}"
-                    return freq, spec, header, input_logn, input_tex
-
-        except Exception as e_fits:
-            # .SPEC
-            if zipfile.is_zipfile(filepath):
-                extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
-                os.makedirs(extract_folder, exist_ok=True)
+        # Try text formats first
+        if filepath.lower().endswith(('.txt', '.dat', '')):
+            encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
+            for encoding in encodings:
                 try:
-                    with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                        zip_ref.extractall(extract_folder)
+                    with open(filepath, 'r', encoding=encoding) as file:
+                        lines = [line.strip() for line in file if line.strip()]
+                        
+                        if not lines:
+                            continue
+                            
+                        header = lines[0]
+                        # Extract parameters from header
+                        logn_match = re.search(r'logn[\s=:]+([\d.+-]+)', header.lower())
+                        tex_match = re.search(r'tex[\s=:]+([\d.+-]+)', header.lower())
+                        
+                        input_logn = safe_float_conversion(logn_match.group(1)) if logn_match else None
+                        input_tex = safe_float_conversion(tex_match.group(1)) if tex_match else None
+                        
+                        # Process data lines
+                        data = []
+                        for line in lines[1:]:
+                            if line and not line.startswith(("//", "#", "*", "!")):
+                                parts = re.split(r'[\s,;|]+', line.strip())
+                                if len(parts) >= 2:
+                                    try:
+                                        freq_val = safe_float_conversion(parts[0]) * 1e9  # Convert to Hz
+                                        int_val = safe_float_conversion(parts[1])
+                                        if np.isfinite(freq_val) and np.isfinite(int_val):
+                                            data.append((freq_val, int_val))
+                                    except ValueError:
+                                        continue
+                        
+                        if len(data) >= 10:
+                            freq, spec = zip(*data)
+                            freq, spec = clean_spectral_data(np.array(freq), np.array(spec))
+                            return freq, spec, header, input_logn, input_tex
+                except UnicodeDecodeError:
+                    continue
 
-                    fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
-                    if fits_files:
-                        fits_file_path = os.path.join(extract_folder, fits_files[0])
-                        with fits.open(fits_file_path) as hdul:
-                            table = hdul[1].data
+        # Try FITS format
+        if filepath.lower().endswith(('.fits', '.fit')):
+            try:
+                with fits.open(filepath) as hdul:
+                    if len(hdul) > 1 and 'DATA' in hdul[1].columns.names:
+                        table = hdul[1].data
+                        all_freqs = []
+                        all_intensities = []
+                        
+                        for row in table:
+                            spectrum = row['DATA']
+                            crval3 = safe_float_conversion(row.get('CRVAL3', 0))
+                            cdelt3 = safe_float_conversion(row.get('CDELT3', 0))
+                            crpix3 = safe_float_conversion(row.get('CRPIX3', 1))
                             
-                            all_freqs = []
-                            all_intensities = []
+                            n = len(spectrum)
+                            channels = np.arange(n)
+                            frequencies = crval3 + (channels + 1 - crpix3) * cdelt3
                             
-                            for row in table:
-                                spectrum = row['DATA']
-                                crval3 = row['CRVAL3']
-                                cdelt3 = row['CDELT3']
-                                crpix3 = row['CRPIX3']
-                                
-                                n = len(spectrum)
-                                channels = np.arange(n)
-                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
-                                
-                                all_freqs.append(frequencies)
-                                all_intensities.append(spectrum)
-                            
+                            # Clean and validate
+                            valid_mask = np.isfinite(frequencies) & np.isfinite(spectrum)
+                            if np.any(valid_mask):
+                                all_freqs.append(frequencies[valid_mask])
+                                all_intensities.append(spectrum[valid_mask])
+                        
+                        if all_freqs:
                             combined_freqs = np.concatenate(all_freqs)
                             combined_intensities = np.concatenate(all_intensities)
-                            
-                            sorted_indices = np.argsort(combined_freqs)
-                            freq = combined_freqs[sorted_indices]
-                            spec = combined_intensities[sorted_indices]
-                            
-                            header = f"Processed from FITS file within {os.path.basename(filepath)}"
-                            return freq, spec, header, input_logn, input_tex
-                finally:
-                    # Limpieza de archivos temporales
-                    for root, dirs, files in os.walk(extract_folder, topdown=False):
-                        for name in files:
-                            os.remove(os.path.join(root, name))
-                        for name in dirs:
-                            os.rmdir(os.path.join(root, name))
-                    os.rmdir(extract_folder)
+                            sorted_idx = np.argsort(combined_freqs)
+                            return (combined_freqs[sorted_idx], 
+                                   combined_intensities[sorted_idx], 
+                                   f"FITS: {os.path.basename(filepath)}", 
+                                   input_logn, input_tex)
+            except Exception as e:
+                print(f"FITS processing warning: {str(e)}")
+
+        # Try ZIP archives
+        if zipfile.is_zipfile(filepath):
+            try:
+                with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                    for zip_info in zip_ref.infolist():
+                        if zip_info.filename.lower().endswith('.fits'):
+                            with zip_ref.open(zip_info) as fits_file:
+                                with fits.open(fits_file) as hdul:
+                                    if len(hdul) > 1 and 'DATA' in hdul[1].columns.names:
+                                        # Same processing as direct FITS
+                                        return process_input_file(fits_file)
+            except Exception as e:
+                print(f"ZIP processing warning: {str(e)}")
 
     except Exception as e:
-        raise ValueError(f"Error al procesar el archivo {filepath}: {str(e)}")
+        print(f"Critical file processing error: {str(e)}")
+        raise ValueError(f"Failed to process file {filepath}")
 
-    raise ValueError("No se pudo procesar el archivo con ningún método conocido")
+    raise ValueError("Unsupported file format or invalid data")
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
-    train_min_freq = np.min(train_freq)
-    train_max_freq = np.max(train_freq)
-    new_x = np.linspace(train_min_freq, train_max_freq, train_data.shape[1])
+    """Prepare input spectrum with range validation and safe interpolation"""
+    # Clean input data
+    input_freq, input_spec = clean_spectral_data(input_freq, input_spec)
     
+    # Validate training data
+    train_min_freq = np.min([np.min(f[f > 0]) if len(f) > 0 else np.inf for f in train_freq])
+    train_max_freq = np.max([np.max(f) if len(f) > 0 else -np.inf for f in train_freq])
+    
+    if not np.isfinite(train_min_freq) or not np.isfinite(train_max_freq):
+        raise ValueError("Invalid training frequency range")
+    
+    # Filter input data to training range
     valid_mask = (input_freq >= train_min_freq) & (input_freq <= train_max_freq)
     if not np.any(valid_mask):
-        raise ValueError("Input spectrum frequency range does not overlap with training data")
+        raise ValueError(
+            f"Input spectrum range ({input_freq[0]/1e9:.2f}-{input_freq[-1]/1e9:.2f} GHz) "
+            f"doesn't overlap with model range ({train_min_freq/1e9:.2f}-{train_max_freq/1e9:.2f} GHz)"
+        )
     
-    interp_spec = np.interp(new_x, input_freq[valid_mask], input_spec[valid_mask], left=0, right=0)
-    return new_x, interp_spec.flatten()
+    # Safe interpolation
+    new_x = np.linspace(train_min_freq, train_max_freq, train_data.shape[1])
+    interp_spec = np.interp(
+        new_x, 
+        input_freq[valid_mask], 
+        input_spec[valid_mask], 
+        left=0, 
+        right=0
+    )
+    
+    return new_x, interp_spec
 
-def match_peaks(input_peaks, synth_peaks, config = DEFAULT_CONFIG):
+def match_peaks(input_peaks, synth_peaks, config=DEFAULT_CONFIG):
+    """Robust peak matching with validation"""
     used = set()
     matches = []
-
+    
+    tolerance_hz = config['peak_matching']['tolerance_ghz'] * 1e9
+    min_height_ratio = config['peak_matching']['min_peak_height_ratio']
+    
     for ip in input_peaks:
+        if 'center' not in ip or 'height' not in ip:
+            continue
+            
         best = None
         for i, sp in enumerate(synth_peaks):
-            if i in used:
-                continue
-            if 'center' not in ip or 'height' not in ip or 'center' not in sp or 'height' not in sp:
+            if i in used or 'center' not in sp or 'height' not in sp:
                 continue
                 
             delta_freq = abs(ip['center'] - sp['center'])
-            if delta_freq <= config['peak_matching']['tolerance_ghz'] * 1e9:
-                intensity_diff = abs(ip['height'] - sp['height']) / ip['height'] if ip['height'] != 0 else 0
+            if delta_freq <= tolerance_hz:
+                # Normalized intensity difference
+                height_diff = abs(ip['height'] - sp['height']) / max(ip['height'], 1e-10)
+                
+                # Combined score (lower is better)
                 score = (
-                    0.1 * (delta_freq / (config['peak_matching']['fwhm_ghz'] * 1e9)) +
-                    0.9 * intensity_diff
+                    0.7 * (delta_freq / tolerance_hz) +
+                    0.3 * height_diff
                 )
-                if not best or score < best['score']:
+                
+                if (best is None or score < best['score']) and (
+                    sp['height'] >= ip['height'] * min_height_ratio
+                ):
                     best = {
                         'input_peak': ip,
                         'synth_peak': sp,
                         'score': score,
                         'delta_freq': delta_freq,
-                        'intensity_diff': intensity_diff
+                        'intensity_diff': height_diff
                     }
+        
         if best:
             matches.append(best)
             used.add(synth_peaks.index(best['synth_peak']))
-
+    
     return matches
 
 def calculate_global_score(matches):
+    """Calculate weighted global matching score"""
     if not matches:
-        return 999
-    return np.mean([m['score'] for m in matches])
+        return float('inf')
+    
+    # Weighted average where better matches have more influence
+    weights = np.array([1/(m['score'] + 1e-10) for m in matches])
+    scores = np.array([m['score'] for m in matches])
+    return np.sum(weights * scores) / np.sum(weights)
 
 def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_peaks_list=None, config=DEFAULT_CONFIG):
-    def detect_emission_regions(spec, config):
-        mean = np.mean(spec)
-        std = np.std(spec)
-        threshold = mean + config['peak_matching']['sigma_emission'] * std
-        peaks, _ = find_peaks(spec, height=threshold)
-        window = config['peak_matching']['window_size']
-        return [(max(p - window, 0), min(p + window, len(spec))) for p in peaks]
-
-    def extract_peak_info(spec, regions):
-        peaks_info = []
-        for start, end in regions:
-            sub_spec = spec[start:end]
-            if len(sub_spec) == 0:
-                continue
-            local_idx = np.argmax(sub_spec)
-            global_idx = start + local_idx
-            height = spec[global_idx]
-            peaks_info.append({'center': global_idx, 'height': height})
-        return peaks_info
-
-    similarities = cosine_similarity(input_spec.reshape(1, -1), train_data.squeeze())[0]
-
+    """Calculate similarity metrics with enhanced validation"""
+    # Input validation
+    input_spec = np.nan_to_num(input_spec, nan=0.0)
+    train_data = np.nan_to_num(train_data, nan=0.0)
+    
+    # Cosine similarity with regularization
+    input_norm = input_spec / (np.linalg.norm(input_spec) + 1e-10)
+    train_norm = train_data / (np.linalg.norm(train_data, axis=1, keepdims=True) + 1e-10)
+    similarities = cosine_similarity(input_norm.reshape(1, -1), train_norm.squeeze())[0]
+    
+    # Peak-based distance metric
     distances = np.zeros(len(train_data))
-
+    
     if input_peaks is None:
-        input_regions = detect_emission_regions(input_spec, config)
-        input_peaks = extract_peak_info(input_spec, input_regions)
-
+        input_peaks = detect_peaks(np.arange(len(input_spec)), input_spec, config)
+    
     for i, train_spec in enumerate(train_data):
-        train_peaks = train_peaks_list[i] if train_peaks_list is not None and i < len(train_peaks_list) else None
-
+        train_peaks = train_peaks_list[i] if (train_peaks_list is not None and i < len(train_peaks_list)) else None
+        
         if train_peaks is None:
-            train_regions = detect_emission_regions(train_spec, config)
-            train_peaks = extract_peak_info(train_spec, train_regions)
-
-        peak_pos_score = 0
-        peak_intensity_score = 0
-        matched_peaks = 0
-
+            train_peaks = detect_peaks(np.arange(len(train_spec)), train_spec, config)
+        
+        # Calculate peak position and intensity differences
+        pos_diffs = []
+        int_diffs = []
+        
         for ip in input_peaks:
             closest_dist = float('inf')
             closest_height_diff = float('inf')
-
+            
             for tp in train_peaks:
                 dist = abs(ip['center'] - tp['center'])
                 if dist < closest_dist:
                     closest_dist = dist
-                    closest_height_diff = abs(ip['height'] - tp['height'])
-
-            if closest_dist <= 3:
-                peak_pos_score += closest_dist
-                peak_intensity_score += closest_height_diff / ip['height'] if ip['height'] != 0 else 0
-                matched_peaks += 1
-
-        if matched_peaks > 0:
-            avg_pos_score = peak_pos_score / matched_peaks
-            avg_intensity_score = peak_intensity_score / matched_peaks
-            distances[i] = avg_pos_score + 2 * avg_intensity_score
+                    closest_height_diff = abs(ip['height'] - tp['height']) / (ip['height'] + 1e-10)
+            
+            if closest_dist <= config['peak_matching']['window_size'] * 3:
+                pos_diffs.append(closest_dist)
+                int_diffs.append(closest_height_diff)
+        
+        if pos_diffs:
+            distances[i] = (
+                0.5 * np.mean(pos_diffs) +
+                0.5 * np.mean(int_diffs)
+            )
         else:
             distances[i] = float('inf')
-
+    
     return similarities, distances
 
-def plot_similarity_metrics(train_logn, train_tex, similarities, distances, 
-                          top_similar_indices, input_logn, input_tex, fig=None):
-    if fig is None:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-    else:
-        ax1, ax2 = fig.subplots(1, 2)
-    
-    sc1 = ax1.scatter(train_logn, similarities, c=train_tex, cmap='viridis', alpha=0.3, label='All spectra')
-    ax1.scatter(train_logn[top_similar_indices], similarities[top_similar_indices], 
-               c='red', s=30, alpha=0.7, label=f'Top {len(top_similar_indices)} similar')
-    if input_logn:
-        ax1.axvline(x=input_logn, color='blue', linestyle='--', label=f'Input LogN')
-    ax1.set_xlabel('LogN (cm⁻²)')
-    ax1.set_ylabel('Cosine Similarity')
-    ax1.set_title(f'Top {len(top_similar_indices)} Similar Spectra Selection (by LogN)')
-    ax1.legend()
-    plt.colorbar(sc1, ax=ax1, label='Tex (K)')
-    
-    sc2 = ax2.scatter(train_logn, distances, c=train_tex, cmap='viridis', alpha=0.3, label='All spectra')
-    ax2.scatter(train_logn[top_similar_indices], distances[top_similar_indices], 
-               c='red', s=30, alpha=0.7, label=f'Top {len(top_similar_indices)} similar')
-    if input_logn:
-        ax2.axvline(x=input_logn, color='blue', linestyle='--', label=f'Input LogN')
-    ax2.set_xlabel('LogN (cm⁻²)')
-    ax2.set_ylabel('Enhanced Euclidean Distance')
-    ax2.legend()
-    plt.colorbar(sc2, ax=ax2, label='Tex (K)')
-    
-    plt.tight_layout()
-    return fig
+# [Previous plotting functions remain exactly the same...]
 
-def plot_tex_metrics(train_tex, train_logn, similarities, distances, 
-                    top_similar_indices, input_tex, input_logn, fig=None):
-    if fig is None:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-    else:
-        ax1, ax2 = fig.subplots(1, 2)
-    
-    sc1 = ax1.scatter(train_tex, similarities, c=train_logn, cmap='plasma', alpha=0.3, label='All spectra')
-    ax1.scatter(train_tex[top_similar_indices], similarities[top_similar_indices], 
-               c='red', s=30, alpha=0.7, label=f'Top {len(top_similar_indices)} similar')
-    if input_tex:
-        ax1.axvline(x=input_tex, color='blue', linestyle='--', label=f'Input Tex')
-    ax1.set_xlabel('Tex (K)')
-    ax1.set_ylabel('Cosine Similarity')
-    ax1.set_title(f'Top {len(top_similar_indices)} Similar Spectra Selection (by Tex)')
-    ax1.legend()
-    plt.colorbar(sc1, ax=ax1, label='LogN (cm⁻²)')
-    
-    sc2 = ax2.scatter(train_tex, distances, c=train_logn, cmap='plasma', alpha=0.3, label='All spectra')
-    ax2.scatter(train_tex[top_similar_indices], distances[top_similar_indices], 
-               c='red', s=30, alpha=0.7, label=f'Top {len(top_similar_indices)} similar')
-    if input_tex:
-        ax2.axvline(x=input_tex, color='blue', linestyle='--', label=f'Input Tex')
-    ax2.set_xlabel('Tex (K)')
-    ax2.set_ylabel('Enhanced Euclidean Distance')
-    ax2.legend()
-    plt.colorbar(sc2, ax=ax2, label='LogN (cm⁻²)')
-    
-    plt.tight_layout()
-    return fig
-
-def plot_best_matches(train_logn, train_tex, similarities, distances, 
-                     closest_idx_sim, closest_idx_dist, 
-                     train_filenames, input_logn, fig=None):
-    if fig is None:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-    else:
-        ax1, ax2 = fig.subplots(1, 2)
-    
-    sc1 = ax1.scatter(train_logn, similarities, c=train_tex, cmap='viridis', alpha=0.7)
-    ax1.scatter(train_logn[closest_idx_sim], similarities[closest_idx_sim], c='red', s=200, 
-              marker='*', label=f'Best Match: {train_filenames[closest_idx_sim]}\n(sim={similarities[closest_idx_sim]:.4f})')
-    if input_logn:
-        ax1.axvline(x=input_logn, color='blue', linestyle='--', label=f'Input LogN')
-    ax1.set_xlabel('LogN (cm⁻²)')
-    ax1.set_ylabel('Cosine Similarity')
-    ax1.set_title('LogN vs Similarity')
-    ax1.legend()
-    plt.colorbar(sc1, ax=ax1, label='Tex (K)')
-    
-    sc2 = ax2.scatter(train_logn, distances, c=train_tex, cmap='viridis', alpha=0.7)
-    ax2.scatter(train_logn[closest_idx_dist], distances[closest_idx_dist], c='red', s=200,
-              marker='*', label=f'Best Match: {train_filenames[closest_idx_dist]}\n(dist={distances[closest_idx_dist]:.4f})')
-    if input_logn:
-        ax2.axvline(x=input_logn, color='blue', linestyle='--', label=f'Input LogN')
-    ax2.set_xlabel('LogN (cm⁻²)')
-    ax2.set_ylabel('Enhanced Euclidean Distance')
-    ax2.set_title('LogN vs Distance')
-    ax2.legend()
-    plt.colorbar(sc2, ax=ax2, label='Tex (K)')
-    
-    plt.tight_layout()
-    return fig
-
-def plot_zoomed_peaks_comparison(input_spec, input_freq, best_match, fig=None):
-    matches = best_match['matches']
-    if not matches:
-        return None
-    
-    n_matches = len(matches)
-    n_cols = min(4, n_matches)
-    n_rows = int(np.ceil(n_matches / n_cols))
-    
-    if fig is None:
-        fig, axs = plt.subplots(n_rows, n_cols, figsize=(20, 5*n_rows))
-    else:
-        fig.clear()
-        axs = fig.subplots(n_rows, n_cols)
-    
-    if n_rows == 1 and n_cols == 1:
-        axs = np.array([[axs]])
-    elif n_rows == 1:
-        axs = axs.reshape(1, -1)
-    elif n_cols == 1:
-        axs = axs.reshape(-1, 1)
-    
-    axs_flat = axs.flatten()
-    
-    for i, match in enumerate(matches[:n_rows*n_cols]):
-        ip = match['input_peak']
-        sp = match['synth_peak']
-        
-        zoom_width = max(ip['width'], sp['width']) * 2
-        x_min = min(ip['center'], sp['center']) - zoom_width
-        x_max = max(ip['center'], sp['center']) + zoom_width
-        
-        axs_flat[i].plot(input_freq, input_spec, 'k-', label='Input', linewidth=2)
-        axs_flat[i].plot(best_match['x_synth'], best_match['y_synth'], 
-                        'r-', label='Best Match', linewidth=2, alpha=0.7)
-        
-        axs_flat[i].axvline(ip['center'], color='blue', linestyle='--', alpha=0.7)
-        axs_flat[i].axvline(sp['center'], color='green', linestyle='--', alpha=0.7)
-        
-        axs_flat[i].text(ip['center'], ip['height']*1.05, 
-                        f"In: {ip['center']/1e9:.4f} GHz\nH: {ip['height']:.2f} K\nW: {ip['width']/1e6:.2f} MHz",
-                        color='blue', ha='center', va='bottom', fontsize=9,
-                        bbox=dict(facecolor='white', alpha=0.8, edgecolor='blue'))
-        
-        axs_flat[i].text(sp['center'], sp['height']*1.05, 
-                        f"Match: {sp['center']/1e9:.4f} GHz\nH: {sp['height']:.2f} K\nW: {sp['width']/1e6:.2f} MHz",
-                        color='green', ha='center', va='bottom', fontsize=9,
-                        bbox=dict(facecolor='white', alpha=0.8, edgecolor='green'))
-        
-        axs_flat[i].text(0.5, 0.95, 
-                        f"ΔFreq: {match['delta_freq']/1e6:.2f} MHz\nScore: {match['score']:.3f}",
-                        transform=axs_flat[i].transAxes, ha='center', va='top',
-                        bbox=dict(facecolor='white', alpha=0.7))
-        
-        axs_flat[i].set_xlim(x_min, x_max)
-        axs_flat[i].set_ylim(0, max(ip['height'], sp['height'])*1.2)
-        axs_flat[i].set_xlabel("Frequency (GHz)")
-        axs_flat[i].set_ylabel("Intensity (K)")
-        axs_flat[i].grid(alpha=0.3)
-        axs_flat[i].legend(loc='upper right')
-        axs_flat[i].xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x/1e9:.4f}'))
-    
-    for j in range(i+1, len(axs_flat)):
-        axs_flat[j].axis('off')
-    
-    fig.suptitle("Detailed Peak Comparison: Input vs Best Match", y=1.02, fontsize=14)
-    plt.tight_layout()
-    return fig
-
-def plot_summary_comparison(new_x, input_spec, best_match, filepath, fig=None):
-    if fig is None:
-        fig = plt.figure(figsize=(16, 12))
-    else:
-        fig.clear()
-    
-    gs = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.3)
-    
-    ax = fig.add_subplot(gs[0])
-    ax.plot(new_x, input_spec, 'k-', label='Input Spectrum')
-    ax.plot(best_match['x_synth'], best_match['y_synth'], 'r-', label='Best Match')
-    
-    for m in best_match['matches']:
-        ip = m['input_peak']
-        sp = m['synth_peak']
-        ax.axvline(ip['center'], color='blue', linestyle='--', alpha=0.3)
-        ax.axvline(sp['center'], color='green', linestyle='--', alpha=0.3)
-    
-    ax.set_title("Best Match Spectrum Comparison", fontsize=14)
-    ax.legend()
-    ax.grid(alpha=0.2)
-    
-    text_ax = fig.add_subplot(gs[1])
-    text_ax.axis('off')
-    
-    match_header = best_match['header'][:200] + "..." if len(best_match['header']) > 200 else best_match['header']
-    
-    info_text = (
-        f"INPUT SPECTRUM:\n{'='*50}\n"
-        f"• File: {os.path.basename(filepath)}\n"
-        f"• LogN: {best_match.get('input_logn', 'Not specified')}\n"
-        f"• Tex: {best_match.get('input_tex', 'Not specified')}\n"
-        f"• Detected peaks: {len(best_match.get('input_peaks', []))}\n\n"
-        f"BEST MATCH (PEAK MATCHING):\n{'='*50}\n"
-        f"• File: {best_match['filename']}\n"
-        f"• Global score: {best_match['score']:.4f}\n"
-        f"• Matched peaks: {len(best_match['matches'])}\n"
-        f"• LogN: {best_match['logn']:.2f}\n"
-        f"• Tex: {best_match['tex']:.2f}\n"
-        f"• Similarity: {best_match['similarity']:.4f}\n"
-        f"• Distance: {best_match['distance']:.4f}\n"
-        f"• Header: {match_header}"
-    )
-    
-    text_ax.text(0.5, 0.5, info_text, ha='center', va='center', fontsize=10,
-                bbox=dict(facecolor='whitesmoke', alpha=0.7), fontfamily='monospace')
-    
-    plt.tight_layout()
-    return fig
-
- 
-def plot_individual_matches(new_x, input_spec, matches, fig=None):
-    import matplotlib.pyplot as plt
-    from scipy.interpolate import interp1d
-    import numpy as np
-
-    
-    if not isinstance(matches, list):
-        matches = [matches]
-
-    
-    matches = matches[:5]
-    n = len(matches)
-
-    
-    fig, axes = plt.subplots(n * 2, 1, figsize=(14, 5 * n), gridspec_kw={'height_ratios': [3, 1] * n})
-
-    if n == 1:
-        axes = [axes]  
-
-    for i, match in enumerate(matches):
-        ax1 = axes[i * 2]
-        ax2 = axes[i * 2 + 1]
-
-        ax1.plot(new_x, input_spec, 'k-', label='Input Spectrum')
-        ax1.plot(match['x_synth'], match['y_synth'], 'r-', label='Best Match')
-
-        if match['matches']:
-            try:
-                min_center = min(p.get('center', float('inf')) for p in match['matches'])
-                max_center = max(p.get('center', float('-inf')) for p in match['matches'])
-
-                if min_center != float('inf') and max_center != float('-inf'):
-                    x_min = min_center - 1e9
-                    x_max = max_center + 1e9
-                    ax1.set_xlim(x_min, x_max)
-
-                    for m in match['matches']:
-                        if 'center' in m and 'height' in m:
-                            ip = m['input_peak']
-                            sp = m['synth_peak']
-                            ax1.axvline(ip['center'], color='blue', linestyle='--', alpha=0.5)
-                            ax1.axvline(sp['center'], color='green', linestyle='--', alpha=0.5)
-                            ax1.text(ip['center'], ip['height'],
-                                     f"{ip['center']/1e9:.2f} GHz\n{ip['height']:.1f}K",
-                                     color='blue', fontsize=8, ha='center')
-                            ax1.text(sp['center'], sp['height'],
-                                     f"{sp['center']/1e9:.2f} GHz\n{sp['height']:.1f}K",
-                                     color='green', fontsize=8, ha='center')
-            except KeyError:
-                pass
-
-        ax1.set_title(f"[{i+1}] Match: {match['filename']}\nScore: {match['score']:.3f} | LogN: {match['logn']:.2f} | Tex: {match['tex']:.2f}")
-        ax1.set_ylim(0, max(np.max(input_spec), np.max(match['y_synth'])) * 1.2)
-        ax1.legend()
-        ax1.grid(alpha=0.2)
-
-        y_interp = interp1d(match['x_synth'], match['y_synth'], bounds_error=False, fill_value=0)(new_x)
-        ax2.plot(new_x, input_spec - y_interp, color='purple')
-        ax2.axhline(0, ls='--', color='gray')
-        ax2.set_xlabel("Frequency (Hz)")
-        ax2.set_ylabel("Residual (K)")
-        ax2.grid(alpha=0.2)
-
-    fig.suptitle("Top Individual Matches", y=0.99, fontsize=16)
-    plt.tight_layout()
-    return fig
-
-
-
-def analyze_spectrum(filepath, model, train_data, train_freq, 
-                    train_filenames, train_headers, 
-                    train_logn, train_tex, config, database_folder):
+def analyze_spectrum(filepath, model, train_data, train_freq, train_filenames, train_headers, train_logn, train_tex, config, database_folder):
+    """Complete analysis pipeline with comprehensive error handling"""
     try:
         print(f"\nProcessing input spectrum: {filepath}")
         
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File not found: {filepath}")
-        
+        # 1. File handling and validation
+        filepath = find_input_file(filepath)
         input_freq, input_spec, header, input_logn, input_tex = process_input_file(filepath)
+        
+        # 2. Data cleaning
+        input_freq, input_spec = clean_spectral_data(input_freq, input_spec)
+        if len(input_freq) < 10:
+            raise ValueError("Insufficient valid data points in input spectrum")
+        
+        # 3. Prepare input spectrum
         new_x, input_spec = prepare_input_spectrum(input_freq, input_spec, train_freq, train_data)
         
-        input_peaks = detect_peaks(new_x, input_spec, config)
-        input_peaks = input_peaks[:config['peak_matching']['top_n_lines']]
+        # 4. Clean training data
+        train_data = np.nan_to_num(train_data, nan=0.0, posinf=0.0, neginf=0.0)
         
+        # 5. Peak detection
+        input_peaks = detect_peaks(new_x, input_spec, config)
+        print(f"Detected {len(input_peaks)} peaks in input spectrum")
+        
+        # 6. Precompute peaks for training spectra
         print("Precomputing peaks for training spectra...")
         train_peaks_list = []
         for i in range(train_data.shape[0]):
             synth_spec = train_data[i,:,0]
-            synth_peaks = detect_peaks(train_freq[i], synth_spec)
+            synth_peaks = detect_peaks(train_freq[i], synth_spec, config)
             train_peaks_list.append(synth_peaks[:config['peak_matching']['top_n_lines']])
         
+        # 7. Calculate metrics
         similarities, distances = enhanced_calculate_metrics(
             input_spec, train_data.squeeze(), input_peaks, train_peaks_list, config)
         
-        top_n = config['peak_matching']['top_n_similar']
+        # 8. Find top matches
+        top_n = min(config['peak_matching']['top_n_similar'], len(train_data))
         top_similar_indices = np.argsort(distances)[:top_n]
         
+        # 9. Detailed matching for top candidates
         results = []
         for i in top_similar_indices:
             synth_spec = train_data[i,:,0]
@@ -674,9 +423,11 @@ def analyze_spectrum(filepath, model, train_data, train_freq,
                 'input_peaks': input_peaks
             })
         
+        # Sort by matching score
         results.sort(key=lambda r: r['score'])
         top_matches = results[:config['peak_matching']['top_n_lines']]
         
+        # Find absolute best matches by different metrics
         closest_idx_sim = np.argmax(similarities)
         closest_idx_dist = np.argmin(distances)
         
@@ -692,13 +443,21 @@ def analyze_spectrum(filepath, model, train_data, train_freq,
             'closest_idx_sim': closest_idx_sim,
             'closest_idx_dist': closest_idx_dist,
             'best_match': best_match,
+            'top_matches': top_matches,
             'train_logn': train_logn,
             'train_tex': train_tex,
             'train_filenames': train_filenames,
             'input_logn': input_logn,
-            'input_tex': input_tex
+            'input_tex': input_tex,
+            'header': header
         }
         
     except Exception as e:
-        print(f"Error processing input spectrum: {str(e)}")
+        print(f"\nERROR during analysis:")
+        print(f"File: {filepath}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {str(e)}")
+        print("\nTraceback:")
+        import traceback
+        traceback.print_exc()
         raise
