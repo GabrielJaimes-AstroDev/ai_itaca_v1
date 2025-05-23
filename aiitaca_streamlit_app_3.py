@@ -252,7 +252,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
-st.image("NGC6523_BVO_2.jpg", use_column_width=True)
+st.image("NGC6523_BVO_2.jpg", use_container_width=True)
 
 col1, col2 = st.columns([1, 3])
 with col1:
