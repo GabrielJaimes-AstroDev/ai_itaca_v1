@@ -94,21 +94,26 @@ st.markdown("""
         background-color: #5F9EA0 !important;  /* Tonos que combinan con plomo */
     }
     
-    /* Pestañas */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        padding: 0 20px;
-        color: #FFFFFF !important;
-        background-color: #81acde !important;  /* Tono intermedio */
+    /* Pestañas principales personalizadas */
+    .main-tabs .stTabs [data-baseweb="tab"] {
+        height: 60px;
+        padding: 0 25px;
+        color: #000000 !important;
+        background-color: #FFFFFF !important;
         border-radius: 5px 5px 0 0;
         border: 1px solid #1E88E5;
+        font-size: 1.1rem !important;
+        font-weight: bold !important;
+        margin: 0 5px;
     }
-    .stTabs [aria-selected="true"] {
+    .main-tabs .stTabs [aria-selected="true"] {
         background-color: #1E88E5 !important;
         color: white !important;
+        border-bottom: 3px solid #FFFFFF;
+    }
+    .main-tabs .stTabs [data-baseweb="tab-list"] {
+        gap: 5px;
+        padding: 0 10px;
     }
     
     /* File uploader adaptado */
@@ -194,6 +199,9 @@ st.markdown("""
     .info-panel h3 {
         color: #1E88E5 !important;
         margin-top: 0;
+        border-bottom: 2px solid #1E88E5;
+        padding-bottom: 10px;
+        text-align: center;
     }
     .info-panel img {
         max-width: 100%;
@@ -233,11 +241,18 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 15px;
     }
+    
+    /* Botón de acknowledgments */
+    .ack-button {
+        position: absolute;
+        right: 20px;
+        bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
-st.image("NGC6523_BVO_2.jpg", use_container_width=True)
+st.image("NGC6523_BVO_2.jpg", use_column_width=True)
 
 col1, col2 = st.columns([1, 3])
 with col1:
@@ -261,36 +276,39 @@ with col2:
     st.markdown('<p class="main-title">AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Molecular Spectrum Analyzer</p>', unsafe_allow_html=True)
 
-# Project description
-st.markdown("""
-<div class="description-panel" style="text-align: justify;">
-A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
-<strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
-</div>
-""", unsafe_allow_html=True)
-
-# Botón de Acknowledgments debajo de la descripción
-if st.button("Project Acknowledgments", key="ack_btn"):
+# Project description with relative positioning for the button
+desc_container = st.container()
+with desc_container:
     st.markdown("""
+    <div class="description-panel" style="text-align: justify; position: relative;">
+    A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
+    <strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
+    <div class="ack-button">
+    """, unsafe_allow_html=True)
+    
+    # Botón de Acknowledgments en la esquina inferior derecha
+    if st.button("Project Acknowledgments", key="ack_btn"):
+        st.markdown("""
         <div class="info-panel">
-            <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+            <h3>Project Acknowledgments</h3>
+            <img src="https://via.placeholder.com/800x400?text=Acknowledgments+Image" alt="Acknowledgments" style="width:100%;">
+            <p style="text-align: justify;">"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".</p>
         </div>
-    """, unsafe_allow_html=True)
-
-    st.image("Acknowledgments.png", use_container_width=True)
-
-    st.markdown("""<div class="description-panel" style="text-align: justify;">
-    "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # === MAIN TABS ===
-tab1, tab2 = st.tabs(["Molecular Spectrum Analyzer", "Cube Visualizer"])
+tab1, tab2 = st.tabs(["Molecular Spectrum Analyzer", "Cube Visualizer"], className="main-tabs")
 
-with tab1:
-    st.title("Molecular Spectrum Analyzer | AI - ITACA")
+# Función para limpiar el sidebar
+def clear_sidebar():
+    st.sidebar.empty()
+
+# Función para mostrar configuración del Spectrum Analyzer
+def show_spectrum_sidebar():
+    st.sidebar.title("Spectrum Configuration")
     
-    # === CONFIGURATION ===
     GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
     TEMP_MODEL_DIR = "downloaded_models"
 
@@ -310,21 +328,17 @@ with tab1:
             progress_bar = st.sidebar.progress(0)
             progress_text.text("📥 Preparing to download models...")
             
-            file_count = 0
-            try:
-                file_count = 10  # Valor estimado para la simulación
-            except:
-                file_count = 10  # Valor por defecto si no podemos obtener el conteo real
+            file_count = 10  # Valor estimado para la simulación
                 
             with st.spinner("📥 Downloading models from Google Drive..."):
                 gdown.download_folder(
                     folder_url, 
                     output=output_dir, 
-                    quiet=True,  # Silenciamos la salida por consola
+                    quiet=True,
                     use_cookies=False
                 )
                 for i in range(file_count):
-                    time.sleep(0.5)  # Pequeña pausa para simular descarga
+                    time.sleep(0.5)
                     progress = int((i + 1) / file_count * 100)
                     progress_bar.progress(progress)
                     progress_text.text(f"📥 Downloading models... {progress}%")
@@ -345,9 +359,6 @@ with tab1:
             st.sidebar.error(f"❌ Error downloading models: {str(e)}")
             return [], [], False
 
-    # === SIDEBAR CONFIGURATION FOR SPECTRUM ANALYZER ===
-    st.sidebar.title("Configuration")
-
     model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
     input_file = st.sidebar.file_uploader(
@@ -366,7 +377,7 @@ with tab1:
     top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
     top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
 
-    config = {
+    return {
         'trained_models_dir': TEMP_MODEL_DIR,
         'peak_matching': {
             'sigma_emission': sigma_emission,
@@ -379,8 +390,27 @@ with tab1:
             'debug': True,
             'top_n_similar': top_n_similar
         }
-    }
+    }, input_file, model_files
 
+# Función para mostrar configuración del Cube Visualizer
+def show_cube_sidebar():
+    st.sidebar.title("Cube Configuration")
+    cube_file = st.sidebar.file_uploader(
+        "Drag and Drop Cube here",
+        type=['fits', 'dat'],
+        help="Upload your spectral cube file (FITS format preferred)"
+    )
+    return cube_file
+
+# Contenido de las pestañas principales
+with tab1:
+    st.title("Molecular Spectrum Analyzer | AI - ITACA")
+    
+    # Mostrar sidebar específico para Spectrum Analyzer
+    config, input_file, model_files = show_spectrum_sidebar()
+    
+    # Resto del contenido de Spectrum Analyzer...
+    # (Aquí iría todo el contenido que ya tenías para el Spectrum Analyzer)
     # PARAMETERS EXPLANATION
     st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -395,7 +425,7 @@ with tab1:
         with st.container():
             st.markdown("""
             <div class="description-panel">
-                <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
+                <h3>Technical Parameters Guide</h3>
                 
             <div style="margin-bottom: 25px;">
             <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
@@ -441,13 +471,9 @@ with tab1:
         with st.container():
             st.markdown("""
                 <div class="info-panel">
-                    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
+                    <h3>Flow of Work Diagram</h3>
+                    <img src="https://via.placeholder.com/800x400?text=Flow+of+Work+Diagram" alt="Flow of Work" style="width:100%;">
                 </div>
-            """, unsafe_allow_html=True)
-
-            st.image("Flow_of_Work.jpg", use_container_width=True)
-
-            st.markdown("""
                 <div style="margin-top: 20px;">
                 <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
                 <ol style="color: white; padding-left: 20px;">
@@ -478,7 +504,6 @@ with tab1:
 
             if analyze_btn:
                 try:
-                    # Configurar la barra de progreso para el análisis
                     progress_text = st.empty()
                     progress_bar = st.progress(0)
                     
@@ -498,11 +523,11 @@ with tab1:
                     update_analysis_progress(1)
                     mol_name = selected_model.replace('_model.keras', '')
 
-                    model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
+                    model_path = os.path.join(config['trained_models_dir'], selected_model)
                     model = tf.keras.models.load_model(model_path)
 
                     update_analysis_progress(2)
-                    data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
+                    data_file = os.path.join(config['trained_models_dir'], f'{mol_name}_train_data.npz')
                     if not os.path.exists(data_file):
                         st.error(f"Training data not found for {mol_name}")
                     else:
@@ -571,7 +596,6 @@ with tab1:
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
 
-            # Mostrar pestañas si el análisis está completo
             if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
                 subtab1, subtab2, subtab3, subtab4, subtab5, subtab6 = st.tabs([
                     "Interactive Summary", 
@@ -604,20 +628,19 @@ with tab1:
                     fig = go.Figure(st.session_state['base_fig'])
                     
                     if show_sigma:
-                        sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
+                        sigma_line_y = config['peak_matching']['sigma_emission'] * np.std(st.session_state['input_spec'])
                         fig.add_hline(y=sigma_line_y, line_dash="dot",
-                                    annotation_text=f"Sigma Emission: {sigma_emission}",
+                                    annotation_text=f"Sigma Emission: {config['peak_matching']['sigma_emission']}",
                                     annotation_position="bottom right",
                                     line_color="yellow")
                     
                     if show_threshold:
-                        threshold_line_y = sigma_threshold * np.std(st.session_state['input_spec'])
+                        threshold_line_y = config['peak_matching']['sigma_threshold'] * np.std(st.session_state['input_spec'])
                         fig.add_hline(y=threshold_line_y, line_dash="dot",
-                                    annotation_text=f"Sigma Threshold: {sigma_threshold}",
+                                    annotation_text=f"Sigma Threshold: {config['peak_matching']['sigma_threshold']}",
                                     annotation_position="bottom left",
                                     line_color="cyan")
                     
-                    # Mostrar el gráfico
                     st.plotly_chart(fig, use_container_width=True, key="main_plot")
 
                 with subtab2:
@@ -666,7 +689,6 @@ with tab1:
                             results['input_logn'], results['input_tex']
                         ))
 
-    # Instructions
     st.sidebar.markdown("""
     **Instructions:**
     1. Select the directory containing the trained models
@@ -686,24 +708,25 @@ with tab1:
 with tab2:
     st.title("Cube Visualizer | AI - ITACA")
     
-    # Limpiar sidebar para la visualización de cubos
-    st.sidebar.empty()
-    st.sidebar.title("Cube Configuration")
-    
-    # Nuevo file uploader específico para cubos
-    cube_file = st.sidebar.file_uploader(
-        "Drag and Drop Cube here",
-        type=['fits', 'dat'],
-        help="Upload your spectral cube file (FITS format preferred)"
-    )
+    # Limpiar sidebar y mostrar configuración específica para cubos
+    cube_file = show_cube_sidebar()
     
     if cube_file:
         st.success("Cube file uploaded successfully!")
         st.markdown("""
         <div class="info-panel">
-            <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Cube Visualization</h3>
+            <h3>Cube Visualization</h3>
+            <img src="https://via.placeholder.com/800x400?text=Cube+Visualization" alt="Cube Visualization" style="width:100%;">
             <p style="text-align: center;">Cube visualization tools will be displayed here once implemented.</p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.info("Please upload a spectral cube file to begin visualization")
+    
+    st.sidebar.markdown("""
+    **Cube Visualization Instructions:**
+    1. Upload your spectral cube file (FITS format preferred)
+    2. Adjust visualization parameters as needed
+    3. Explore different slices of the cube
+    4. Analyze spectral features across spatial dimensions
+    """)
