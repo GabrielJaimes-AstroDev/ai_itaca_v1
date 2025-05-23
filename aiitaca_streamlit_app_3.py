@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions_2 import *
+from core_functions import *
 import tempfile
 import plotly.graph_objects as go
 import tensorflow as tf
@@ -236,7 +236,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # === HEADER WITH IMAGE AND DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
 
@@ -270,421 +269,441 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 </div>
 """, unsafe_allow_html=True)
 
-# === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
-TEMP_MODEL_DIR = "downloaded_models"
+# ACKNOWLEDGMENTS SECTION
+st.markdown("""
+    <div class="info-panel">
+        <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+    </div>
+""", unsafe_allow_html=True)
 
-if not os.path.exists(TEMP_MODEL_DIR):
-    os.makedirs(TEMP_MODEL_DIR)
+st.image("Acknowledgments.png", use_container_width=True)
 
-@st.cache_data(show_spinner=True)
-@st.cache_data(show_spinner=True)
-def download_models_from_drive(folder_url, output_dir):
-    model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-    data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
+st.markdown("""<div class="description-panel" style="text-align: justify;">
+"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
+</div>
+""", unsafe_allow_html=True)
 
-    if model_files and data_files:
-        return model_files, data_files, True
+# === MAIN TABS ===
+tab1, tab2 = st.tabs(["Molecular Spectrum Analyzer | AI - ITACA", "Cube Visualizer | AI - ITACA"])
 
-    try:
-        progress_text = st.sidebar.empty()
-        progress_bar = st.sidebar.progress(0)
-        progress_text.text("📥 Preparing to download models...")
-        
-        file_count = 0
-        try:
-            file_count = 10  # Valor estimado para la simulación
-        except:
-            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
-            
-        with st.spinner("📥 Downloading models from Google Drive..."):
-            gdown.download_folder(
-                folder_url, 
-                output=output_dir, 
-                quiet=True,  # Silenciamos la salida por consola
-                use_cookies=False
-            )
-            for i in range(file_count):
-                time.sleep(0.5)  # Pequeña pausa para simular descarga
-                progress = int((i + 1) / file_count * 100)
-                progress_bar.progress(progress)
-                progress_text.text(f"📥 Downloading models... {progress}%")
-        
+with tab1:
+    # === CONFIGURATION ===
+    GDRIVE_FOLDER_URL = "https://drive.google.com/drive/u/3/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9"
+    TEMP_MODEL_DIR = "downloaded_models"
+
+    if not os.path.exists(TEMP_MODEL_DIR):
+        os.makedirs(TEMP_MODEL_DIR)
+
+    @st.cache_data(show_spinner=True)
+    def download_models_from_drive(folder_url, output_dir):
         model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
         data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-        
-        progress_bar.progress(100)
-        progress_text.text("Process Completed")
-        
+
         if model_files and data_files:
-            st.sidebar.success("✅ Models downloaded successfully!")
-        else:
-            st.sidebar.error("❌ No models found in the specified folder")
+            return model_files, data_files, True
+
+        try:
+            progress_text = st.sidebar.empty()
+            progress_bar = st.sidebar.progress(0)
+            progress_text.text("📥 Preparing to download models...")
             
-        return model_files, data_files, True
-    except Exception as e:
-        st.sidebar.error(f"❌ Error downloading models: {str(e)}")
-        return [], [], False
-
-# === SIDEBAR ===
-st.sidebar.title("Configuration")
-
-model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
-
-input_file = st.sidebar.file_uploader(
-    "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
-    type=None,
-    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
-)
-
-st.sidebar.subheader("Peak Matching Parameters")
-sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
-window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
-sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
-fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
-tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
-min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
-top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
-top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
-
-config = {
-    'trained_models_dir': TEMP_MODEL_DIR,
-    'peak_matching': {
-        'sigma_emission': sigma_emission,
-        'window_size': window_size,
-        'sigma_threshold': sigma_threshold,
-        'fwhm_ghz': fwhm_ghz,
-        'tolerance_ghz': tolerance_ghz,
-        'min_peak_height_ratio': min_peak_height_ratio,
-        'top_n_lines': top_n_lines,
-        'debug': True,
-        'top_n_similar': top_n_similar
-    }
-}
-
-# === MAIN APP ===
-st.title("Molecular Spectrum Analyzer | AI - ITACA")
-
-# PARAMETERS EXPLANATION
-st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
-col1, col2, col3 = st.columns([0.5, 0.5, 0.5])
-with col1:
-    params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
-                          help="Click to show parameters explanation")
-with col2:
-    flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
-                       help="Click to show the workflow diagram")
-
-with col3:
-    Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
-                       help="Click to show Acknowledgments")
-
-if params_tab:
-    with st.container():
-        st.markdown("""
-        <div class="description-panel">
-            <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
-            
-        <div style="margin-bottom: 25px;">
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
-        <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
-        
-        <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
-        
-        <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
-        
-        <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
-        </div>
-            
-        <div style="margin-bottom: 25px;">
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
-        <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
-        
-        <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
-        </div>
-        
-        <div>
-        <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
-        <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
-        
-        <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
-        <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
-        </div>
-        
-        <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-        <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
-        </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# FLOW OF WORK
-if flow_tab:
-    with st.container():
-        st.markdown("""
-            <div class="info-panel">
-                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.image("Flow_of_Work.jpg", use_container_width=True)
-
-        st.markdown("""
-            <div style="margin-top: 20px;">
-            <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-            <ol style="color: white; padding-left: 20px;">
-            <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
-            <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
-            <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
-            <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
-            <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
-            <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
-            </ol>
-            </div>
-            <div class="pro-tip">
-            <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-
-#ACKNOLEGMENTS
-
-if Acknowledgments_tab:
-    with st.container():
-        st.markdown("""
-            <div class="info-panel">
-                <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.image("Acknowledgments.png", use_container_width=True)
-
-        st.markdown("""<div class="description-panel" style="text-align: justify;">
-        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government’s public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
-        </div>
-        """, unsafe_allow_html=True)
-
-if input_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
-        tmp_file.write(input_file.getvalue())
-        tmp_path = tmp_file.name
-
-    if not model_files:
-        st.error("No trained models were found in Google Drive.")
-    else:
-        selected_model = st.selectbox("Select Molecule Model", model_files)
-        
-        analyze_btn = st.button("Analyze Spectrum")
-
-        if analyze_btn:
+            file_count = 0
             try:
-                # Configurar la barra de progreso para el análisis
-                progress_text = st.empty()
-                progress_bar = st.progress(0)
+                file_count = 10  # Valor estimado para la simulación
+            except:
+                file_count = 10  # Valor por defecto si no podemos obtener el conteo real
                 
-                def update_analysis_progress(step, total_steps=6):
-                    progress = int((step / total_steps) * 100)
+            with st.spinner("📥 Downloading models from Google Drive..."):
+                gdown.download_folder(
+                    folder_url, 
+                    output=output_dir, 
+                    quiet=True,  # Silenciamos la salida por consola
+                    use_cookies=False
+                )
+                for i in range(file_count):
+                    time.sleep(0.5)  # Pequeña pausa para simular descarga
+                    progress = int((i + 1) / file_count * 100)
                     progress_bar.progress(progress)
-                    steps = [
-                        "Loading model...",
-                        "Processing spectrum...",
-                        "Detecting peaks...",
-                        "Matching with database...",
-                        "Calculating parameters...",
-                        "Generating visualizations..."
-                    ]
-                    progress_text.text(f"🔍 Analyzing spectrum... {steps[step-1]} ({progress}%)")
+                    progress_text.text(f"📥 Downloading models... {progress}%")
+            
+            model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
+            data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
+            
+            progress_bar.progress(100)
+            progress_text.text("Process Completed")
+            
+            if model_files and data_files:
+                st.sidebar.success("✅ Models downloaded successfully!")
+            else:
+                st.sidebar.error("❌ No models found in the specified folder")
                 
-                update_analysis_progress(1)
-                mol_name = selected_model.replace('_model.keras', '')
+            return model_files, data_files, True
+        except Exception as e:
+            st.sidebar.error(f"❌ Error downloading models: {str(e)}")
+            return [], [], False
 
-                model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
-                model = tf.keras.models.load_model(model_path)
+    # === SIDEBAR ===
+    st.sidebar.title("Configuration")
 
-                update_analysis_progress(2)
-                data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
-                if not os.path.exists(data_file):
-                    st.error(f"Training data not found for {mol_name}")
-                else:
-                    with np.load(data_file) as data:
-                        train_freq = data['train_freq']
-                        train_data = data['train_data']
-                        train_logn = data['train_logn']
-                        train_tex = data['train_tex']
-                        headers = data['headers']
-                        filenames = data['filenames']
+    model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
-                    update_analysis_progress(3)
-                    results = analyze_spectrum(
-                        tmp_path, model, train_data, train_freq,
-                        filenames, headers, train_logn, train_tex,
-                        config, mol_name
-                    )
+    input_file = st.sidebar.file_uploader(
+        "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
+        type=None,
+        help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
+    )
 
-                    update_analysis_progress(6)
-                    st.success("Analysis completed successfully!")
+    st.sidebar.subheader("Peak Matching Parameters")
+    sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
+    window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
+    sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
+    fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
+    tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
+    min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
+    top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
+    top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
 
-                    st.session_state['analysis_results'] = results
-                    st.session_state['analysis_done'] = True
-                    
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=results['input_freq'],
-                        y=results['input_spec'],
-                        mode='lines',
-                        name='Input Spectrum',
-                        line=dict(color='white', width=2)))
-                    
-                    fig.add_trace(go.Scatter(
-                        x=results['best_match']['x_synth'],
-                        y=results['best_match']['y_synth'],
-                        mode='lines',
-                        name='Best Match',
-                        line=dict(color='red', width=2)))
-                    
-                    fig.update_layout(
-                        plot_bgcolor='#0D0F14',
-                        paper_bgcolor='#0D0F14',
-                        margin=dict(l=50, r=50, t=60, b=50),
-                        xaxis_title='Frequency (GHz)',
-                        yaxis_title='Intensity (K)',
-                        hovermode='x unified',
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom",
-                            y=1.02,
-                            xanchor="right",
-                            x=1
-                        ),
-                        height=600,
-                        font=dict(color='white'),
-                        xaxis=dict(gridcolor='#3A3A3A'),
-                        yaxis=dict(gridcolor='#3A3A3A')
-                    )
-                    
-                    st.session_state['base_fig'] = fig
-                    st.session_state['input_spec'] = results['input_spec']
+    config = {
+        'trained_models_dir': TEMP_MODEL_DIR,
+        'peak_matching': {
+            'sigma_emission': sigma_emission,
+            'window_size': window_size,
+            'sigma_threshold': sigma_threshold,
+            'fwhm_ghz': fwhm_ghz,
+            'tolerance_ghz': tolerance_ghz,
+            'min_peak_height_ratio': min_peak_height_ratio,
+            'top_n_lines': top_n_lines,
+            'debug': True,
+            'top_n_similar': top_n_similar
+        }
+    }
 
-                os.unlink(tmp_path)
-            except Exception as e:
-                st.error(f"Error during analysis: {e}")
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+    # PARAMETERS EXPLANATION
+    st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([0.5, 0.5, 0.5])
+    with col1:
+        params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
+                            help="Click to show parameters explanation")
+    with col2:
+        flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
+                        help="Click to show the workflow diagram")
 
-        # Mostrar pestañas si el análisis está completo
-        if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
-            tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                "Interactive Summary", 
-                "Molecule Best Match", 
-                "Peak Matching", 
-                "CNN Training", 
-                "Top Selection: LogN", 
-                "Top Selection: Tex"
-            ])
+    with col3:
+        Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
+                        help="Click to show Acknowledgments")
 
-            with tab0:
-                results = st.session_state['analysis_results']
-                st.markdown(f"""
-                <div class="summary-panel">
-                    <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
-                    <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
-                    <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
-                    <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
+    if params_tab:
+        with st.container():
+            st.markdown("""
+            <div class="description-panel">
+                <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
+                
+            <div style="margin-bottom: 25px;">
+            <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
+            <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
+            
+            <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
+            
+            <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
+            
+            <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
+            </div>
+                
+            <div style="margin-bottom: 25px;">
+            <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
+            <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
+            
+            <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
+            </div>
+            
+            <div>
+            <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
+            <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
+            
+            <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
+            <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
+            <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
+            </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # FLOW OF WORK
+    if flow_tab:
+        with st.container():
+            st.markdown("""
+                <div class="info-panel">
+                    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
                 </div>
-                """, unsafe_allow_html=True)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
-                                           key="show_sigma_checkbox")
-                with col2:
-                    show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
-                                               key="show_threshold_checkbox")
-                
-                fig = go.Figure(st.session_state['base_fig'])
-                
-                if show_sigma:
-                    sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
-                    fig.add_hline(y=sigma_line_y, line_dash="dot",
-                                 annotation_text=f"Sigma Emission: {sigma_emission}",
-                                 annotation_position="bottom right",
-                                 line_color="yellow")
-                
-                if show_threshold:
-                    threshold_line_y = sigma_threshold * np.std(st.session_state['input_spec'])
-                    fig.add_hline(y=threshold_line_y, line_dash="dot",
-                                 annotation_text=f"Sigma Threshold: {sigma_threshold}",
-                                 annotation_position="bottom left",
-                                 line_color="cyan")
-                
-                # Mostrar el gráfico
-                st.plotly_chart(fig, use_container_width=True, key="main_plot")
+            """, unsafe_allow_html=True)
 
-            with tab1:
-                if 'analysis_results' in st.session_state:
+            st.image("Flow_of_Work.jpg", use_container_width=True)
+
+            st.markdown("""
+                <div style="margin-top: 20px;">
+                <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
+                <ol style="color: white; padding-left: 20px;">
+                <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
+                <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
+                <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
+                <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
+                <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
+                <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
+                </ol>
+                </div>
+                <div class="pro-tip">
+                <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+    if input_file is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
+            tmp_file.write(input_file.getvalue())
+            tmp_path = tmp_file.name
+
+        if not model_files:
+            st.error("No trained models were found in Google Drive.")
+        else:
+            selected_model = st.selectbox("Select Molecule Model", model_files)
+            
+            analyze_btn = st.button("Analyze Spectrum")
+
+            if analyze_btn:
+                try:
+                    # Configurar la barra de progreso para el análisis
+                    progress_text = st.empty()
+                    progress_bar = st.progress(0)
+                    
+                    def update_analysis_progress(step, total_steps=6):
+                        progress = int((step / total_steps) * 100)
+                        progress_bar.progress(progress)
+                        steps = [
+                            "Loading model...",
+                            "Processing spectrum...",
+                            "Detecting peaks...",
+                            "Matching with database...",
+                            "Calculating parameters...",
+                            "Generating visualizations..."
+                        ]
+                        progress_text.text(f"🔍 Analyzing spectrum... {steps[step-1]} ({progress}%)")
+                    
+                    update_analysis_progress(1)
+                    mol_name = selected_model.replace('_model.keras', '')
+
+                    model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
+                    model = tf.keras.models.load_model(model_path)
+
+                    update_analysis_progress(2)
+                    data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
+                    if not os.path.exists(data_file):
+                        st.error(f"Training data not found for {mol_name}")
+                    else:
+                        with np.load(data_file) as data:
+                            train_freq = data['train_freq']
+                            train_data = data['train_data']
+                            train_logn = data['train_logn']
+                            train_tex = data['train_tex']
+                            headers = data['headers']
+                            filenames = data['filenames']
+
+                        update_analysis_progress(3)
+                        results = analyze_spectrum(
+                            tmp_path, model, train_data, train_freq,
+                            filenames, headers, train_logn, train_tex,
+                            config, mol_name
+                        )
+
+                        update_analysis_progress(6)
+                        st.success("Analysis completed successfully!")
+
+                        st.session_state['analysis_results'] = results
+                        st.session_state['analysis_done'] = True
+                        
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(
+                            x=results['input_freq'],
+                            y=results['input_spec'],
+                            mode='lines',
+                            name='Input Spectrum',
+                            line=dict(color='white', width=2)))
+                        
+                        fig.add_trace(go.Scatter(
+                            x=results['best_match']['x_synth'],
+                            y=results['best_match']['y_synth'],
+                            mode='lines',
+                            name='Best Match',
+                            line=dict(color='red', width=2)))
+                        
+                        fig.update_layout(
+                            plot_bgcolor='#0D0F14',
+                            paper_bgcolor='#0D0F14',
+                            margin=dict(l=50, r=50, t=60, b=50),
+                            xaxis_title='Frequency (GHz)',
+                            yaxis_title='Intensity (K)',
+                            hovermode='x unified',
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1
+                            ),
+                            height=600,
+                            font=dict(color='white'),
+                            xaxis=dict(gridcolor='#3A3A3A'),
+                            yaxis=dict(gridcolor='#3A3A3A')
+                        )
+                        
+                        st.session_state['base_fig'] = fig
+                        st.session_state['input_spec'] = results['input_spec']
+
+                    os.unlink(tmp_path)
+                except Exception as e:
+                    st.error(f"Error during analysis: {e}")
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
+
+            # Mostrar pestañas si el análisis está completo
+            if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
+                tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                    "Interactive Summary", 
+                    "Molecule Best Match", 
+                    "Peak Matching", 
+                    "CNN Training", 
+                    "Top Selection: LogN", 
+                    "Top Selection: Tex"
+                ])
+
+                with tab0:
                     results = st.session_state['analysis_results']
-                    st.pyplot(plot_summary_comparison(
-                        results['input_freq'], results['input_spec'],
-                        results['best_match'], tmp_path
-                    ))
+                    st.markdown(f"""
+                    <div class="summary-panel">
+                        <h4 style="color: #1E88E5; margin-top: 0;">Detection of Physical Parameters</h4>
+                        <p class="physical-params"><strong>LogN:</strong> {results['best_match']['logn']:.2f} cm⁻²</p>
+                        <p class="physical-params"><strong>Tex:</strong> {results['best_match']['tex']:.2f} K</p>
+                        <p class="physical-params"><strong>File (Top CNN Train):</strong> {results['best_match']['filename']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
+                                            key="show_sigma_checkbox")
+                    with col2:
+                        show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
+                                                key="show_threshold_checkbox")
+                    
+                    fig = go.Figure(st.session_state['base_fig'])
+                    
+                    if show_sigma:
+                        sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
+                        fig.add_hline(y=sigma_line_y, line_dash="dot",
+                                    annotation_text=f"Sigma Emission: {sigma_emission}",
+                                    annotation_position="bottom right",
+                                    line_color="yellow")
+                    
+                    if show_threshold:
+                        threshold_line_y = sigma_threshold * np.std(st.session_state['input_spec'])
+                        fig.add_hline(y=threshold_line_y, line_dash="dot",
+                                    annotation_text=f"Sigma Threshold: {sigma_threshold}",
+                                    annotation_position="bottom left",
+                                    line_color="cyan")
+                    
+                    # Mostrar el gráfico
+                    st.plotly_chart(fig, use_container_width=True, key="main_plot")
 
-            with tab2:
-                if 'analysis_results' in st.session_state:
-                    results = st.session_state['analysis_results']
-                    st.pyplot(plot_zoomed_peaks_comparison(
-                        results['input_spec'], results['input_freq'],
-                        results['best_match']
-                    ))
+                with tab1:
+                    if 'analysis_results' in st.session_state:
+                        results = st.session_state['analysis_results']
+                        st.pyplot(plot_summary_comparison(
+                            results['input_freq'], results['input_spec'],
+                            results['best_match'], tmp_path
+                        ))
 
-            with tab3:
-                if 'analysis_results' in st.session_state:
-                    results = st.session_state['analysis_results']
-                    st.pyplot(plot_best_matches(
-                        results['train_logn'], results['train_tex'],
-                        results['similarities'], results['distances'],
-                        results['closest_idx_sim'], results['closest_idx_dist'],
-                        results['train_filenames'], results['input_logn']
-                    ))
+                with tab2:
+                    if 'analysis_results' in st.session_state:
+                        results = st.session_state['analysis_results']
+                        st.pyplot(plot_zoomed_peaks_comparison(
+                            results['input_spec'], results['input_freq'],
+                            results['best_match']
+                        ))
 
-            with tab4:
-                if 'analysis_results' in st.session_state:
-                    results = st.session_state['analysis_results']
-                    st.pyplot(plot_tex_metrics(
-                        results['train_tex'], results['train_logn'],
-                        results['similarities'], results['distances'],
-                        results['top_similar_indices'],
-                        results['input_tex'], results['input_logn']
-                    ))
+                with tab3:
+                    if 'analysis_results' in st.session_state:
+                        results = st.session_state['analysis_results']
+                        st.pyplot(plot_best_matches(
+                            results['train_logn'], results['train_tex'],
+                            results['similarities'], results['distances'],
+                            results['closest_idx_sim'], results['closest_idx_dist'],
+                            results['train_filenames'], results['input_logn']
+                        ))
 
-            with tab5:
-                if 'analysis_results' in st.session_state:
-                    results = st.session_state['analysis_results']
-                    st.pyplot(plot_similarity_metrics(
-                        results['train_logn'], results['train_tex'],
-                        results['similarities'], results['distances'],
-                        results['top_similar_indices'],
-                        results['input_logn'], results['input_tex']
-                    ))
+                with tab4:
+                    if 'analysis_results' in st.session_state:
+                        results = st.session_state['analysis_results']
+                        st.pyplot(plot_tex_metrics(
+                            results['train_tex'], results['train_logn'],
+                            results['similarities'], results['distances'],
+                            results['top_similar_indices'],
+                            results['input_tex'], results['input_logn']
+                        ))
 
-# Instructions
-st.sidebar.markdown("""
-**Instructions:**
-1. Select the directory containing the trained models
-2. Upload your input spectrum file ( . | .txt | .dat | .fits | .spec )
-3. Adjust the peak matching parameters as needed
-4. Select the model to use for analysis
-5. Click 'Analyze Spectrum' to run the analysis
+                with tab5:
+                    if 'analysis_results' in st.session_state:
+                        results = st.session_state['analysis_results']
+                        st.pyplot(plot_similarity_metrics(
+                            results['train_logn'], results['train_tex'],
+                            results['similarities'], results['distances'],
+                            results['top_similar_indices'],
+                            results['input_logn'], results['input_tex']
+                        ))
 
-**Interactive Plot Controls:**
-- 🔍 Zoom: Click and drag to select area
-- 🖱️ Hover: View exact values
-- 🔄 Reset: Double-click
-- 🏎️ Pan: Shift+click+drag
-- 📊 Range Buttons: Quick zoom to percentage ranges
-""")
+    # Instructions
+    st.sidebar.markdown("""
+    **Instructions:**
+    1. Select the directory containing the trained models
+    2. Upload your input spectrum file ( . | .txt | .dat | .fits | .spec )
+    3. Adjust the peak matching parameters as needed
+    4. Select the model to use for analysis
+    5. Click 'Analyze Spectrum' to run the analysis
+
+    **Interactive Plot Controls:**
+    - 🔍 Zoom: Click and drag to select area
+    - 🖱️ Hover: View exact values
+    - 🔄 Reset: Double-click
+    - 🏎️ Pan: Shift+click+drag
+    - 📊 Range Buttons: Quick zoom to percentage ranges
+    """)
+
+with tab2:
+    st.title("Cube Visualizer | AI - ITACA")
+    
+    st.markdown("""
+    <div class="description-panel" style="text-align: justify;">
+    Upload your spectral cube data for visualization and analysis. This tool allows you to explore 3D spectral data cubes interactively.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    cube_file = st.file_uploader(
+        "Drag and Drop Cube/Spectrum here",
+        type=['fits', 'dat', 'txt'],
+        help="Upload your spectral cube file (FITS format preferred)"
+    )
+    
+    if cube_file:
+        st.success("Cube file uploaded successfully!")
+        st.markdown("""
+        <div class="info-panel">
+            <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Cube Visualization</h3>
+            <p style="text-align: center;">Cube visualization tools will be displayed here once implemented.</p>
+        </div>
+        """, unsafe_allow_html=True)
