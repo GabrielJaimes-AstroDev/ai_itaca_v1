@@ -44,8 +44,8 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* Botones azules SOLO en Molecular Analyzer */
-    div[data-testid="stTabs"] div[role="tabpanel"]:has(#tabs-bui3-tabpanel-0) .stButton>button {
+    /* Botones azules SOLO dentro de Molecular Analyzer */
+    .stButton>button {
         border: 2px solid #1E88E5 !important;
         color: white !important;
         background-color: #1E88E5 !important;
@@ -53,7 +53,7 @@ st.markdown("""
         padding: 0.5rem 1rem !important;
         transition: all 0.3s !important;
     }
-    div[data-testid="stTabs"] div[role="tabpanel"]:has(#tabs-bui3-tabpanel-0) .stButton>button:hover {
+    .stButton>button:hover {
         border: 2px solid #0D47A1 !important;
         background-color: #0D47A1 !important;
     }
@@ -258,17 +258,22 @@ st.markdown("""
         border-radius: 5px;
         margin-top: 10px;
         font-family: monospace;
-        color: black !important;
+        color: #000000 !important;
     }
-    .cube-status strong {
-        color: black !important;
+    .spectrum-display {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border-left: 5px solid #1E88E5;
+        color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
-st.image("NGC6523_BVO_2.jpg", use_container_width=True)
+st.image("NGC6523_BVO_2.jpg", use_column_width=True)
 
 col1, col2 = st.columns([1, 3])
 with col1:
@@ -301,7 +306,7 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1zlnkEoRvHR1CoK9hXxD0Jy4JIKF5Uybz?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
@@ -459,6 +464,28 @@ def display_cube_info(cube_info):
         File size: {cube_info['file_size_mb']:.2f} MB<br>
     </div>
     """, unsafe_allow_html=True)
+
+def extract_spectrum_from_region(cube_data, x_range, y_range):
+    """Extract average spectrum from selected region"""
+    if len(cube_data.shape) == 3:
+        # For 3D cubes: average over spatial dimensions
+        spectrum = np.mean(cube_data[:, y_range[0]:y_range[1], x_range[0]:x_range[1]], axis=(1, 2))
+    else:
+        # For 2D images: return None
+        spectrum = None
+    return spectrum
+
+def create_spectrum_download(freq_axis, spectrum):
+    """Create downloadable text file with spectrum data"""
+    if freq_axis is None or spectrum is None:
+        return None
+    
+    # Create the file content
+    content = "!xValues(GHz)\tyValues(K)\n"
+    for freq, val in zip(freq_axis, spectrum):
+        content += f"{freq/1e9:.8f}\t{val:.6f}\n"
+    
+    return content
 
 # === MAIN TABS ===
 tab_molecular, tab_cube = st.tabs(["Molecular Analyzer", "Cube Visualizer"])
@@ -849,7 +876,7 @@ with tab_cube:
                     show_rms = st.checkbox("Show RMS noise level", value=True)
                     scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0)
                 
-                # Placeholder for cube visualization
+                # Create figure with click events
                 fig, ax = plt.subplots(figsize=(10, 8))
                 
                 if len(cube_info['data'].shape) == 3:
@@ -862,89 +889,64 @@ with tab_cube:
                 elif scale == "Sqrt":
                     img_data = np.sqrt(img_data - np.nanmin(img_data))
                 
-                # Create interactive plot with selection capability
-                from matplotlib.widgets import RectangleSelector
-                
-                def onselect(eclick, erelease):
-                    x1, y1 = int(eclick.xdata), int(eclick.ydata)
-                    x2, y2 = int(erelease.xdata), int(erelease.ydata)
-                    
-                    # Calculate average spectrum for selected region
-                    if len(cube_info['data'].shape) == 3:
-                        selected_region = cube_info['data'][:, min(y1,y2):max(y1,y2)+1, min(x1,x2):max(x1,x2)+1]
-                        avg_spectrum = np.nanmean(selected_region, axis=(1,2))
-                    else:
-                        avg_spectrum = np.array([np.nan])
-                    
-                    # Store in session state
-                    st.session_state['selected_region'] = {
-                        'x1': min(x1,x2),
-                        'x2': max(x1,x2),
-                        'y1': min(y1,y2),
-                        'y2': max(y1,y2),
-                        'avg_spectrum': avg_spectrum,
-                        'freq_axis': cube_info['freq_axis']
-                    }
-                
-                # Plot the cube image
-                img = ax.imshow(img_data, origin='lower', cmap='viridis')
+                im = ax.imshow(img_data, origin='lower', cmap='viridis')
                 ax.set_title(f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]:.2f} Hz)" if cube_info['freq_axis'] is not None else ""))
                 ax.set_xlabel("RA (pixels)")
                 ax.set_ylabel("Dec (pixels)")
                 
-                # Add rectangle selector
-                rs = RectangleSelector(ax, onselect, useblit=True,
-                                    button=[1],  # Left mouse button
-                                    minspanx=5, minspany=5,
-                                    spancoords='pixels',
-                                    interactive=True)
+                # Add colorbar
+                plt.colorbar(im, ax=ax, label='Intensity (K)')
                 
+                # Display the plot
                 st.pyplot(fig)
                 
-                # Show selected region info and average spectrum if available
-                if 'selected_region' in st.session_state:
-                    sel = st.session_state['selected_region']
-                    st.markdown(f"""
-                    <div class="cube-status">
-                        <strong>Selected Region:</strong><br>
-                        X: {sel['x1']} to {sel['x2']} pixels<br>
-                        Y: {sel['y1']} to {sel['y2']} pixels<br>
-                        Width: {abs(sel['x2']-sel['x1'])} pixels<br>
-                        Height: {abs(sel['y2']-sel['y1'])} pixels
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Plot average spectrum
-                    if sel['freq_axis'] is not None and len(sel['avg_spectrum']) > 1:
-                        fig_spec, ax_spec = plt.subplots(figsize=(10, 4))
-                        ax_spec.plot(sel['freq_axis'], sel['avg_spectrum'], 'b-')
-                        ax_spec.set_xlabel('Frequency (Hz)')
-                        ax_spec.set_ylabel('Intensity (K)')
-                        ax_spec.set_title('Average Spectrum of Selected Region')
-                        ax_spec.grid(True)
-                        st.pyplot(fig_spec)
+                # Region selection and spectrum extraction
+                st.markdown("""
+                <div class="cube-controls">
+                    <h4 style="color: #1E88E5; margin-top: 0;">Region Selection</h4>
+                    <p>Click on the image to select a pixel or draw a rectangle to select a region.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Get click coordinates
+                click_data = st.session_state.get('click_data', None)
+                
+                # If we have a cube with spectral dimension
+                if len(cube_info['data'].shape) == 3 and cube_info['freq_axis'] is not None:
+                    # Extract spectrum from selected region
+                    if click_data and 'x_range' in click_data and 'y_range' in click_data:
+                        spectrum = extract_spectrum_from_region(
+                            cube_info['data'],
+                            click_data['x_range'],
+                            click_data['y_range']
+                        )
                         
-                        # Export button
-                        if st.button("Export Spectrum as TXT"):
-                            # Create data array
-                            export_data = np.column_stack((sel['freq_axis'], sel['avg_spectrum']))
+                        if spectrum is not None:
+                            # Plot the spectrum
+                            fig_spec, ax_spec = plt.subplots(figsize=(10, 4))
+                            ax_spec.plot(cube_info['freq_axis']/1e9, spectrum, '-', color='#1E88E5')
+                            ax_spec.set_xlabel('Frequency (GHz)')
+                            ax_spec.set_ylabel('Intensity (K)')
+                            ax_spec.set_title('Extracted Spectrum from Selected Region')
+                            ax_spec.grid(True, alpha=0.3)
                             
-                            # Create temporary file
-                            with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as tmp_file:
-                                np.savetxt(tmp_file, export_data, header="!xValues(Hz)\tyValues(K)", fmt='%.8f\t%.8f')
-                                tmp_path = tmp_file.name
+                            st.markdown("""
+                            <div class="spectrum-display">
+                                <h4 style="color: #1E88E5; margin-top: 0;">Extracted Spectrum</h4>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            # Create download link
-                            with open(tmp_path, 'rb') as f:
+                            st.pyplot(fig_spec)
+                            
+                            # Create download button for the spectrum
+                            spectrum_content = create_spectrum_download(cube_info['freq_axis'], spectrum)
+                            if spectrum_content:
                                 st.download_button(
-                                    label="Download Spectrum",
-                                    data=f,
+                                    label="Download Spectrum as TXT",
+                                    data=spectrum_content,
                                     file_name="extracted_spectrum.txt",
                                     mime="text/plain"
                                 )
-                            
-                            # Clean up
-                            os.unlink(tmp_path)
                 
                 os.unlink(tmp_cube_path)
                 
