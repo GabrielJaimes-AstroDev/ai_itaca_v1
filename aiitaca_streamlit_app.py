@@ -9,6 +9,9 @@ import tensorflow as tf
 import gdown
 import shutil
 import time
+from astropy.io import fits
+import warnings
+warnings.filterwarnings('ignore')
 
 st.set_page_config(
     layout="wide", 
@@ -94,21 +97,28 @@ st.markdown("""
         background-color: #5F9EA0 !important;  /* Tonos que combinan con plomo */
     }
     
-    /* Pestañas */
+    /* Pestañas personalizadas */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
     }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
         padding: 0 20px;
-        color: #FFFFFF !important;
-        background-color: #81acde !important;  /* Tono intermedio */
-        border-radius: 5px 5px 0 0;
-        border: 1px solid #1E88E5;
+        color: #000000 !important;
+        background-color: #E5E7E9 !important;  /* Color plomo claro cuando no está seleccionado */
+        border-radius: 5px !important;
+        margin: 0 5px !important;
+        transition: all 0.3s !important;
+        border: none !important;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #1E88E5 !important;
-        color: white !important;
+        background-color: #FFFFFF !important;  /* Blanco cuando está seleccionado */
+        color: #000000 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-weight: bold;
+    }
+    .stTabs [aria-selected="true"] [data-testid="stMarkdownContainer"] p {
+        color: #000000 !important;
     }
     
     /* File uploader adaptado */
@@ -233,12 +243,28 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 15px;
     }
+    
+    /* Estilos para el visualizador de cubos */
+    .cube-controls {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 5px solid #1E88E5;
+    }
+    .cube-status {
+        background-color: #f8f9fa !important;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-family: monospace;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
-st.image("NGC6523_BVO_2.jpg", use_container_width=True)
+st.image("NGC6523_BVO_2.jpg", use_column_width=True)
 
 col1, col2 = st.columns([1, 3])
 with col1:
@@ -330,11 +356,29 @@ st.sidebar.title("Configuration")
 
 model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
-input_file = st.sidebar.file_uploader(
+# Clear previous analysis when new file is uploaded
+if 'prev_uploaded_file' not in st.session_state:
+    st.session_state.prev_uploaded_file = None
+
+current_uploaded_file = st.sidebar.file_uploader(
     "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
     type=None,
     help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
 )
+
+if current_uploaded_file != st.session_state.prev_uploaded_file:
+    # Clear previous analysis results
+    if 'analysis_results' in st.session_state:
+        del st.session_state['analysis_results']
+    if 'analysis_done' in st.session_state:
+        del st.session_state['analysis_done']
+    if 'base_fig' in st.session_state:
+        del st.session_state['base_fig']
+    if 'input_spec' in st.session_state:
+        del st.session_state['input_spec']
+    
+    st.session_state.prev_uploaded_file = current_uploaded_file
+    st.rerun()
 
 st.sidebar.subheader("Peak Matching Parameters")
 sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
@@ -360,6 +404,57 @@ config = {
         'top_n_similar': top_n_similar
     }
 }
+
+# === CUBE VISUALIZER FUNCTIONS ===
+@st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
+def load_alma_cube(file_path, max_mb=2048):
+    """Load ALMA cube from FITS file with memory management"""
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    
+    if file_size_mb > max_mb:
+        raise ValueError(f"File size ({file_size_mb:.2f} MB) exceeds maximum allowed ({max_mb} MB)")
+    
+    with fits.open(file_path) as hdul:
+        cube_data = hdul[0].data
+        header = hdul[0].header
+        
+        # Basic cube information
+        n_chan = cube_data.shape[0] if len(cube_data.shape) == 3 else 1
+        ra_size = cube_data.shape[-2] if len(cube_data.shape) >= 2 else 1
+        dec_size = cube_data.shape[-1] if len(cube_data.shape) >= 2 else 1
+        
+        # Get frequency information from header
+        try:
+            freq0 = header['CRVAL3']
+            dfreq = header['CDELT3']
+            freq_axis = freq0 + dfreq * np.arange(n_chan)
+        except:
+            freq_axis = None
+        
+        cube_info = {
+            'data': cube_data,
+            'header': header,
+            'n_chan': n_chan,
+            'ra_size': ra_size,
+            'dec_size': dec_size,
+            'freq_axis': freq_axis,
+            'file_size_mb': file_size_mb
+        }
+    
+    return cube_info
+
+def display_cube_info(cube_info):
+    """Display basic information about the loaded cube"""
+    st.markdown(f"""
+    <div class="cube-status">
+        <strong>Cube Information:</strong><br>
+        Dimensions: {cube_info['data'].shape}<br>
+        Channels: {cube_info['n_chan']}<br>
+        RA size: {cube_info['ra_size']} pixels<br>
+        Dec size: {cube_info['dec_size']} pixels<br>
+        File size: {cube_info['file_size_mb']:.2f} MB<br>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === MAIN TABS ===
 tab_molecular, tab_cube = st.tabs(["Molecular Analyzer", "Cube Visualizer"])
@@ -455,9 +550,7 @@ with tab_molecular:
                 </div>
             """, unsafe_allow_html=True)
 
-
-    #ACKNOLEGMENTS
-
+    # ACKNOWLEDGMENTS
     if Acknowledgments_tab:
         with st.container():
             st.markdown("""
@@ -473,9 +566,9 @@ with tab_molecular:
             </div>
             """, unsafe_allow_html=True)
 
-    if input_file is not None:
+    if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
-            tmp_file.write(input_file.getvalue())
+            tmp_file.write(current_uploaded_file.getvalue())
             tmp_path = tmp_file.name
 
         if not model_files:
@@ -698,23 +791,86 @@ with tab_cube:
     st.markdown("""
     <div class="description-panel">
         <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">3D Spectral Cube Visualization</h3>
-        <p>This tool allows you to visualize and analyze 3D spectral cubes from radio astronomy observations.</p>
+        <p>Upload and visualize ALMA spectral cubes (FITS format) up to 2GB in size. Explore different channels and create integrated intensity maps.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Placeholder for cube visualization functionality
-    st.warning("Cube Visualizer functionality is under development...")
+    cube_file = st.file_uploader(
+        "Upload ALMA Cube (FITS format)",
+        type=["fits", "FITS"],
+        help="Drag and drop ALMA cube FITS file here (up to 2GB)"
+    )
     
-    # Example of what could be added later
-    st.markdown("""
-    <div class="info-panel">
-        <h4>Future Features:</h4>
-        <ul>
-            <li>...</li>
-
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    if cube_file is not None:
+        with st.spinner("Processing ALMA cube..."):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".fits") as tmp_cube:
+                tmp_cube.write(cube_file.getvalue())
+                tmp_cube_path = tmp_cube.name
+            
+            try:
+                cube_info = load_alma_cube(tmp_cube_path)
+                display_cube_info(cube_info)
+                
+                st.success("ALMA cube loaded successfully!")
+                
+                # Basic cube visualization controls
+                st.markdown("""
+                <div class="cube-controls">
+                    <h4 style="color: #1E88E5; margin-top: 0;">Cube Visualization Controls</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    channel = st.slider(
+                        "Select Channel",
+                        0, cube_info['n_chan']-1, cube_info['n_chan']//2,
+                        help="Navigate through spectral channels"
+                    )
+                    
+                    st.markdown(f"""
+                    <div class="cube-status">
+                        <strong>Current Channel:</strong> {channel}<br>
+                        {f"Frequency: {cube_info['freq_axis'][channel]:.2f} Hz" if cube_info['freq_axis'] is not None else ""}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div style="margin-top: 20px;">
+                        <strong>Visualization Options:</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    show_rms = st.checkbox("Show RMS noise level", value=True)
+                    scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0)
+                
+                # Placeholder for cube visualization
+                fig, ax = plt.subplots(figsize=(10, 8))
+                
+                if len(cube_info['data'].shape) == 3:
+                    img_data = cube_info['data'][channel, :, :]
+                else:
+                    img_data = cube_info['data']
+                
+                if scale == "Log":
+                    img_data = np.log10(img_data - np.nanmin(img_data) + 1)
+                elif scale == "Sqrt":
+                    img_data = np.sqrt(img_data - np.nanmin(img_data))
+                
+                ax.imshow(img_data, origin='lower', cmap='viridis')
+                ax.set_title(f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]:.2f} Hz)" if cube_info['freq_axis'] is not None else ""))
+                ax.set_xlabel("RA (pixels)")
+                ax.set_ylabel("Dec (pixels)")
+                
+                st.pyplot(fig)
+                
+                os.unlink(tmp_cube_path)
+                
+            except Exception as e:
+                st.error(f"Error processing ALMA cube: {str(e)}")
+                if os.path.exists(tmp_cube_path):
+                    os.unlink(tmp_cube_path)
 
 # === CACHED FUNCTIONS ===
 @st.cache_data(ttl=3600)
