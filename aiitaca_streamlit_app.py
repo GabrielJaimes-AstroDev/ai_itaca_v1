@@ -114,9 +114,6 @@ st.markdown("""
         background-color: #1E88E5 !important;
         color: white !important;
     }    
-    .stTabs [aria-selected="true"] [data-testid="stMarkdownContainer"] p {
-        color: #000000 !important;
-    }
     
     /* File uploader adaptado */
     .stFileUploader>div>div>div>div {
