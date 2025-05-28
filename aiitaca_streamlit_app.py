@@ -98,25 +98,22 @@ st.markdown("""
     }
     
     /* Pestañas personalizadas */
+    /* Pestañas */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
     }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
         padding: 0 20px;
-        color: #000000 !important;
-        background-color: #E5E7E9 !important;  /* Color plomo claro cuando no está seleccionado */
-        border-radius: 5px !important;
-        margin: 0 5px !important;
-        transition: all 0.3s !important;
-        border: none !important;
+        color: #FFFFFF !important;
+        background-color: #81acde !important;  /* Tono intermedio */
+        border-radius: 5px 5px 0 0;
+        border: 1px solid #1E88E5;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #FFFFFF !important;  /* Blanco cuando está seleccionado */
-        color: #000000 !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        font-weight: bold;
-    }
+        background-color: #1E88E5 !important;
+        color: white !important;
+    }    
     .stTabs [aria-selected="true"] [data-testid="stMarkdownContainer"] p {
         color: #000000 !important;
     }
