@@ -44,8 +44,8 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* Botones azules (mejor contraste con fondo oscuro) */
-    .stButton>button {
+    /* Botones azules SOLO en Molecular Analyzer */
+    div[data-testid="stTabs"] div[role="tabpanel"]:has(#tabs-bui3-tabpanel-0) .stButton>button {
         border: 2px solid #1E88E5 !important;
         color: white !important;
         background-color: #1E88E5 !important;
@@ -53,7 +53,7 @@ st.markdown("""
         padding: 0.5rem 1rem !important;
         transition: all 0.3s !important;
     }
-    .stButton>button:hover {
+    div[data-testid="stTabs"] div[role="tabpanel"]:has(#tabs-bui3-tabpanel-0) .stButton>button:hover {
         border: 2px solid #0D47A1 !important;
         background-color: #0D47A1 !important;
     }
@@ -258,6 +258,10 @@ st.markdown("""
         border-radius: 5px;
         margin-top: 10px;
         font-family: monospace;
+        color: black !important;
+    }
+    .cube-status strong {
+        color: black !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -858,12 +862,89 @@ with tab_cube:
                 elif scale == "Sqrt":
                     img_data = np.sqrt(img_data - np.nanmin(img_data))
                 
-                ax.imshow(img_data, origin='lower', cmap='viridis')
+                # Create interactive plot with selection capability
+                from matplotlib.widgets import RectangleSelector
+                
+                def onselect(eclick, erelease):
+                    x1, y1 = int(eclick.xdata), int(eclick.ydata)
+                    x2, y2 = int(erelease.xdata), int(erelease.ydata)
+                    
+                    # Calculate average spectrum for selected region
+                    if len(cube_info['data'].shape) == 3:
+                        selected_region = cube_info['data'][:, min(y1,y2):max(y1,y2)+1, min(x1,x2):max(x1,x2)+1]
+                        avg_spectrum = np.nanmean(selected_region, axis=(1,2))
+                    else:
+                        avg_spectrum = np.array([np.nan])
+                    
+                    # Store in session state
+                    st.session_state['selected_region'] = {
+                        'x1': min(x1,x2),
+                        'x2': max(x1,x2),
+                        'y1': min(y1,y2),
+                        'y2': max(y1,y2),
+                        'avg_spectrum': avg_spectrum,
+                        'freq_axis': cube_info['freq_axis']
+                    }
+                
+                # Plot the cube image
+                img = ax.imshow(img_data, origin='lower', cmap='viridis')
                 ax.set_title(f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]:.2f} Hz)" if cube_info['freq_axis'] is not None else ""))
                 ax.set_xlabel("RA (pixels)")
                 ax.set_ylabel("Dec (pixels)")
                 
+                # Add rectangle selector
+                rs = RectangleSelector(ax, onselect, useblit=True,
+                                    button=[1],  # Left mouse button
+                                    minspanx=5, minspany=5,
+                                    spancoords='pixels',
+                                    interactive=True)
+                
                 st.pyplot(fig)
+                
+                # Show selected region info and average spectrum if available
+                if 'selected_region' in st.session_state:
+                    sel = st.session_state['selected_region']
+                    st.markdown(f"""
+                    <div class="cube-status">
+                        <strong>Selected Region:</strong><br>
+                        X: {sel['x1']} to {sel['x2']} pixels<br>
+                        Y: {sel['y1']} to {sel['y2']} pixels<br>
+                        Width: {abs(sel['x2']-sel['x1'])} pixels<br>
+                        Height: {abs(sel['y2']-sel['y1'])} pixels
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Plot average spectrum
+                    if sel['freq_axis'] is not None and len(sel['avg_spectrum']) > 1:
+                        fig_spec, ax_spec = plt.subplots(figsize=(10, 4))
+                        ax_spec.plot(sel['freq_axis'], sel['avg_spectrum'], 'b-')
+                        ax_spec.set_xlabel('Frequency (Hz)')
+                        ax_spec.set_ylabel('Intensity (K)')
+                        ax_spec.set_title('Average Spectrum of Selected Region')
+                        ax_spec.grid(True)
+                        st.pyplot(fig_spec)
+                        
+                        # Export button
+                        if st.button("Export Spectrum as TXT"):
+                            # Create data array
+                            export_data = np.column_stack((sel['freq_axis'], sel['avg_spectrum']))
+                            
+                            # Create temporary file
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as tmp_file:
+                                np.savetxt(tmp_file, export_data, header="!xValues(Hz)\tyValues(K)", fmt='%.8f\t%.8f')
+                                tmp_path = tmp_file.name
+                            
+                            # Create download link
+                            with open(tmp_path, 'rb') as f:
+                                st.download_button(
+                                    label="Download Spectrum",
+                                    data=f,
+                                    file_name="extracted_spectrum.txt",
+                                    mime="text/plain"
+                                )
+                            
+                            # Clean up
+                            os.unlink(tmp_path)
                 
                 os.unlink(tmp_cube_path)
                 
