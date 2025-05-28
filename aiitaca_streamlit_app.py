@@ -703,18 +703,15 @@ with tab_cube:
     """, unsafe_allow_html=True)
     
     # Placeholder for cube visualization functionality
-    st.warning("Cube Visualizer functionality is under development and will be available in the next release.")
+    st.warning("Cube Visualizer functionality is under development...")
     
     # Example of what could be added later
     st.markdown("""
     <div class="info-panel">
         <h4>Future Features:</h4>
         <ul>
-            <li>FITS cube file upload</li>
-            <li>Interactive 3D visualization</li>
-            <li>Channel slicing and integration</li>
-            <li>Moment maps generation</li>
-            <li>Position-velocity diagrams</li>
+            <li>...</li>
+
         </ul>
     </div>
     """, unsafe_allow_html=True)
