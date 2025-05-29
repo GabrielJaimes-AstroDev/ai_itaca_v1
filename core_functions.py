@@ -100,8 +100,21 @@ def process_input_file(filepath):
 
                 if len(data) >= 10:  # Mínimo 10 puntos válidos
                     freq, spec = zip(*data)
-                    freq = np.array(freq)
-                    spec = np.array(spec)
+                    freq = np.array(freq, dtype=np.float64)
+                    spec = np.array(spec, dtype=np.float64)
+                    
+                    # Reemplazar inf y -inf por NaN
+                    freq[~np.isfinite(freq)] = np.nan
+                    spec[~np.isfinite(spec)] = np.nan
+                    
+                    # Opcional: considerar ceros como no válidos
+                    spec[spec == 0] = np.nan
+                    
+                    # Filtrar pares válidos (ambos no NaN)
+                    valid_mask = np.isfinite(freq) & np.isfinite(spec)
+                    freq = freq[valid_mask]
+                    spec = spec[valid_mask]
+
                     return freq, spec, header, input_logn, input_tex
 
         except UnicodeDecodeError:
@@ -133,8 +146,21 @@ def process_input_file(filepath):
 
                 if len(data) >= 10:
                     freq, spec = zip(*data)
-                    freq = np.array(freq)
-                    spec = np.array(spec)
+                    freq = np.array(freq, dtype=np.float64)
+                    spec = np.array(spec, dtype=np.float64)
+                    
+                    # Reemplazar inf y -inf por NaN
+                    freq[~np.isfinite(freq)] = np.nan
+                    spec[~np.isfinite(spec)] = np.nan
+                    
+                    # Opcional: considerar ceros como no válidos
+                    spec[spec == 0] = np.nan
+                    
+                    # Filtrar pares válidos (ambos no NaN)
+                    valid_mask = np.isfinite(freq) & np.isfinite(spec)
+                    freq = freq[valid_mask]
+                    spec = spec[valid_mask]
+
                     return freq, spec, header, input_logn, input_tex
 
         # .FITS
