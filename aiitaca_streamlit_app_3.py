@@ -264,41 +264,46 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* Model info panel */
-    .model-info-panel {
-        background-color: white !important;
-        padding: 15px;
-        border-radius: 10px;
-        margin-top: 10px;
-        border-left: 5px solid #1E88E5;
-        color: black !important;
-    }
-    .model-info-panel h4 {
-        color: #1E88E5 !important;
-        margin-top: 0;
-        margin-bottom: 10px;
-    }
-    .model-info-panel p {
-        margin: 5px 0;
+    /* Estilo para la tabla de training dataset */
+    .training-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
         font-size: 0.9em;
+        font-family: sans-serif;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
     }
-    .model-info-panel img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 5px;
-        margin-top: 10px;
+    .training-table thead tr {
+        background-color: #1E88E5;
+        color: #ffffff;
+        text-align: left;
     }
-    
-    /* Disabled state for buttons and controls */
-    .stButton>button:disabled,
-    .stSelectbox>div>div>div>div[disabled],
-    .stSlider>div>div>div>div[disabled],
-    .stFileUploader>div>div>div>div[disabled] {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
+    .training-table th,
+    .training-table td {
+        padding: 12px 15px;
+        border: 1px solid #dddddd;
+    }
+    .training-table tbody tr {
+        border-bottom: 1px solid #dddddd;
+    }
+    .training-table tbody tr:nth-of-type(even) {
+        background-color: #f3f3f3;
+    }
+    .training-table tbody tr:last-of-type {
+        border-bottom: 2px solid #1E88E5;
+    }
+    .training-table tbody tr:hover {
+        background-color: #f1f1f1;
+        color: #000000;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# === FUNCIÓN PARA BLOQUEAR CONTROLES DURANTE PROCESAMIENTO ===
+def disable_widgets():
+    """Deshabilita todos los widgets cuando hay procesamiento en curso"""
+    processing = st.session_state.get('processing', False)
+    return processing
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
@@ -340,34 +345,6 @@ TEMP_MODEL_DIR = "downloaded_models"
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
-# Dictionary with model information
-MODEL_INFO = {
-    "CH3OH_model.keras": {
-        "name": "Methanol (CH3OH)",
-        "catalog": "CDMS",
-        "freq_range": "80 - 300 GHz",
-        "logn_range": "12.0 - 19.1 cm⁻²",
-        "tex_range": "20 - 380 K",
-        "image": "ch3oh_spectrum.jpg"
-    },
-    "H2CO_model.keras": {
-        "name": "Formaldehyde (H2CO)",
-        "catalog": "JPL",
-        "freq_range": "90 - 350 GHz",
-        "logn_range": "11.5 - 18.8 cm⁻²",
-        "tex_range": "15 - 400 K",
-        "image": "h2co_spectrum.jpg"
-    },
-    "HCN_model.keras": {
-        "name": "Hydrogen Cyanide (HCN)",
-        "catalog": "CDMS",
-        "freq_range": "85 - 320 GHz",
-        "logn_range": "12.2 - 19.0 cm⁻²",
-        "tex_range": "25 - 350 K",
-        "image": "hcn_spectrum.jpg"
-    }
-}
-
 @st.cache_data(ttl=3600, show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
     model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
@@ -377,6 +354,7 @@ def download_models_from_drive(folder_url, output_dir):
         return model_files, data_files, True
 
     try:
+        st.session_state['processing'] = True
         progress_text = st.sidebar.empty()
         progress_bar = st.sidebar.progress(0)
         progress_text.text("📥 Preparing to download models...")
@@ -415,6 +393,8 @@ def download_models_from_drive(folder_url, output_dir):
     except Exception as e:
         st.sidebar.error(f"❌ Error downloading models: {str(e)}")
         return [], [], False
+    finally:
+        st.session_state['processing'] = False
 
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
@@ -428,7 +408,8 @@ if 'prev_uploaded_file' not in st.session_state:
 current_uploaded_file = st.sidebar.file_uploader(
     "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
     type=None,
-    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
+    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file",
+    disabled=disable_widgets()
 )
 
 # === NEW UNIT SELECTION WIDGETS ===
@@ -440,7 +421,8 @@ freq_unit = st.sidebar.selectbox(
     "Frequency Units",
     ["GHz", "MHz", "kHz", "Hz"],
     index=0,
-    help="Select the frequency units for the input spectrum"
+    help="Select the frequency units for the input spectrum",
+    disabled=disable_widgets()
 )
 
 # Intensity units selection
@@ -448,7 +430,8 @@ intensity_unit = st.sidebar.selectbox(
     "Intensity Units",
     ["K", "Jy"],
     index=0,
-    help="Select the intensity units for the input spectrum"
+    help="Select the intensity units for the input spectrum",
+    disabled=disable_widgets()
 )
 
 # Conversion factors
@@ -479,14 +462,14 @@ if current_uploaded_file != st.session_state.prev_uploaded_file:
     st.rerun()
 
 st.sidebar.subheader("Peak Matching Parameters")
-sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
-window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
-sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
-fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
-tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
-min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
-top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
-top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
+sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider", disabled=disable_widgets())
+window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1, disabled=disable_widgets())
+sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider", disabled=disable_widgets())
+fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01, disabled=disable_widgets())
+tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01, disabled=disable_widgets())
+min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05, disabled=disable_widgets())
+top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5, disabled=disable_widgets())
+top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50, disabled=disable_widgets())
 
 config = {
     'trained_models_dir': TEMP_MODEL_DIR,
@@ -599,17 +582,23 @@ with tab_molecular:
 
     # PARAMETERS EXPLANATION
     st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([0.5, 0.5, 0.5])
+    col1, col2, col3, col4 = st.columns([0.5, 0.5, 0.5, 0.5])
     with col1:
         params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
-                            help="Click to show parameters explanation")
+                            help="Click to show parameters explanation",
+                            disabled=disable_widgets())
     with col2:
-        flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
-                        help="Click to show the workflow diagram")
-
+        training_tab = st.button("📊 Training dataset", key="training_btn", 
+                            help="Click to show training dataset information",
+                            disabled=disable_widgets())
     with col3:
+        flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
+                        help="Click to show the workflow diagram",
+                        disabled=disable_widgets())
+    with col4:
         Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
-                        help="Click to show Acknowledgments")
+                        help="Click to show Acknowledgments",
+                        disabled=disable_widgets())
 
     if params_tab:
         with st.container():
@@ -653,6 +642,78 @@ with tab_molecular:
             <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
             <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
             </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # TRAINING DATASET
+    if training_tab:
+        with st.container():
+            st.markdown("""
+                <div class="info-panel">
+                    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Training Dataset Parameters</h3>
+                </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <table class="training-table">
+                <thead>
+                    <tr>
+                        <th>Molécule</th>
+                        <th>Tex Range (K)</th>
+                        <th>Tex Step</th>
+                        <th>LogN Range (cm⁻²)</th>
+                        <th>LogN Step</th>
+                        <th>Frequency Range (GHz)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>CO</td>
+                        <td>120 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 380</td>
+                    </tr>
+                    <tr>
+                        <td>SiO</td>
+                        <td>120 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 380</td>
+                    </tr>
+                    <tr>
+                        <td>HCO⁺ v=0,1,2</td>
+                        <td>120 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 380</td>
+                    </tr>
+                    <tr>
+                        <td>CH3CN</td>
+                        <td>120 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 380</td>
+                    </tr>
+                    <tr>
+                        <td>CH3OCHO</td>
+                        <td>120 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 380</td>
+                    </tr>
+                </tbody>
+            </table>
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="pro-tip">
+                <p><strong>Note:</strong> The training dataset was generated using RADEX non-LTE radiative transfer models with typical ISM conditions.</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -708,50 +769,20 @@ with tab_molecular:
         if not model_files:
             st.error("No trained models were found in Google Drive.")
         else:
-            # Create columns for model selection and info panel
-            col_select, col_info = st.columns([0.6, 0.4])
+            selected_model = st.selectbox(
+                "Select Molecule Model", 
+                model_files,
+                disabled=disable_widgets()
+            )
             
-            with col_select:
-                selected_model = st.selectbox("Select Molecule Model", model_files)
-            
-            with col_info:
-                # Display model information panel
-                if selected_model in MODEL_INFO:
-                    model_data = MODEL_INFO[selected_model]
-                    st.markdown(f"""
-                    <div class="model-info-panel">
-                        <h4>Model Information</h4>
-                        <p><strong>Molecule:</strong> {model_data['name']}</p>
-                        <p><strong>Catalog:</strong> {model_data['catalog']}</p>
-                        <p><strong>Frequency Range:</strong> {model_data['freq_range']}</p>
-                        <p><strong>LogN Range:</strong> {model_data['logn_range']}</p>
-                        <p><strong>Tex Range:</strong> {model_data['tex_range']}</p>
-                        <img src="{model_data['image']}" alt="Model Spectrum">
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div class="model-info-panel">
-                        <h4>Model Information</h4>
-                        <p>No information available for this model</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            # Create a container for the analyze button to control its state
-            analyze_container = st.container()
-            
-            with analyze_container:
-                analyze_btn = st.button("Analyze Spectrum", key="analyze_btn")
+            analyze_btn = st.button(
+                "Analyze Spectrum",
+                disabled=disable_widgets()
+            )
 
             if analyze_btn:
                 try:
-                    # Disable all interactive elements during processing
-                    st.session_state.processing = True
-                    
-                    # Update the button to show processing state
-                    with analyze_container:
-                        st.button("Analyzing... Please wait", disabled=True)
-                    
+                    st.session_state['processing'] = True
                     # Configurar la barra de progreso para el análisis
                     progress_text = st.empty()
                     progress_bar = st.progress(0)
@@ -849,19 +880,12 @@ with tab_molecular:
                         st.session_state['input_spec'] = results['input_spec']
 
                     os.unlink(tmp_path)
-                    
-                    # Re-enable interactive elements after processing
-                    st.session_state.processing = False
-                    st.rerun()
-                    
                 except Exception as e:
                     st.error(f"Error during analysis: {e}")
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
-                    
-                    # Re-enable interactive elements if there was an error
-                    st.session_state.processing = False
-                    st.rerun()
+                finally:
+                    st.session_state['processing'] = False
 
             # Mostrar pestañas si el análisis está completo
             if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
@@ -888,10 +912,12 @@ with tab_molecular:
                     col1, col2 = st.columns(2)
                     with col1:
                         show_sigma = st.checkbox("Visualize Sigma Emission", value=True, 
-                                            key="show_sigma_checkbox")
+                                            key="show_sigma_checkbox",
+                                            disabled=disable_widgets())
                     with col2:
                         show_threshold = st.checkbox("Visualize Sigma Threshold", value=True,
-                                                key="show_threshold_checkbox")
+                                                key="show_threshold_checkbox",
+                                                disabled=disable_widgets())
                     
                     fig = go.Figure(st.session_state['base_fig'])
                     
@@ -988,11 +1014,13 @@ with tab_cube:
     cube_file = st.file_uploader(
         "Upload ALMA Cube (FITS format)",
         type=["fits", "FITS"],
-        help="Drag and drop ALMA cube FITS file here (up to 2GB)"
+        help="Drag and drop ALMA cube FITS file here (up to 2GB)",
+        disabled=disable_widgets()
     )
     
     if cube_file is not None:
         with st.spinner("Processing ALMA cube..."):
+            st.session_state['processing'] = True
             with tempfile.NamedTemporaryFile(delete=False, suffix=".fits") as tmp_cube:
                 tmp_cube.write(cube_file.getvalue())
                 tmp_cube_path = tmp_cube.name
@@ -1016,7 +1044,8 @@ with tab_cube:
                     channel = st.slider(
                         "Select Channel",
                         0, cube_info['n_chan']-1, cube_info['n_chan']//2,
-                        help="Navigate through spectral channels"
+                        help="Navigate through spectral channels",
+                        disabled=disable_widgets()
                     )
                     
                     st.markdown(f"""
@@ -1032,8 +1061,8 @@ with tab_cube:
                         <strong>Visualization Options:</strong>
                     </div>
                     """, unsafe_allow_html=True)
-                    show_rms = st.checkbox("Show RMS noise level", value=True)
-                    scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0)
+                    show_rms = st.checkbox("Show RMS noise level", value=True, disabled=disable_widgets())
+                    scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0, disabled=disable_widgets())
                 
                 # Create interactive plot with Plotly
                 if len(cube_info['data'].shape) == 3:
@@ -1083,9 +1112,9 @@ with tab_cube:
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        x_range = st.slider("X Range (pixels)", 0, cube_info['ra_size']-1, (0, cube_info['ra_size']-1))
+                        x_range = st.slider("X Range (pixels)", 0, cube_info['ra_size']-1, (0, cube_info['ra_size']-1), disabled=disable_widgets())
                     with col2:
-                        y_range = st.slider("Y Range (pixels)", 0, cube_info['dec_size']-1, (0, cube_info['dec_size']-1))
+                        y_range = st.slider("Y Range (pixels)", 0, cube_info['dec_size']-1, (0, cube_info['dec_size']-1), disabled=disable_widgets())
                     
                     spectrum = extract_spectrum_from_region(
                         cube_info['data'],
@@ -1136,7 +1165,8 @@ with tab_cube:
                                 label="Download Spectrum as TXT",
                                 data=spectrum_content,
                                 file_name="extracted_spectrum.txt",
-                                mime="text/plain"
+                                mime="text/plain",
+                                disabled=disable_widgets()
                             )
                 
                 os.unlink(tmp_cube_path)
@@ -1145,6 +1175,8 @@ with tab_cube:
                 st.error(f"Error processing ALMA cube: {str(e)}")
                 if os.path.exists(tmp_cube_path):
                     os.unlink(tmp_cube_path)
+            finally:
+                st.session_state['processing'] = False
 
 # === CACHED FUNCTIONS ===
 @st.cache_data(ttl=3600)
@@ -1170,17 +1202,3 @@ def cached_analyze_spectrum(tmp_path, model, train_data, train_freq, filenames, 
         filenames, headers, train_logn, train_tex,
         config, mol_name
     )
-
-# === DISABLE INTERACTIVE ELEMENTS DURING PROCESSING ===
-if 'processing' in st.session_state and st.session_state.processing:
-    st.markdown("""
-    <style>
-        .stButton>button,
-        .stSelectbox>div,
-        .stSlider>div,
-        .stFileUploader>div {
-            pointer-events: none;
-            opacity: 0.6;
-        }
-    </style>
-    """, unsafe_allow_html=True)
