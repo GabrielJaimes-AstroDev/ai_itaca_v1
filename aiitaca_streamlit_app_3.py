@@ -2,13 +2,17 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions import *
+from core_functions_2 import *
 import tempfile
 import plotly.graph_objects as go
+import plotly.express as px
 import tensorflow as tf
 import gdown
 import shutil
 import time
+from astropy.io import fits
+import warnings
+warnings.filterwarnings('ignore')
 
 st.set_page_config(
     layout="wide", 
@@ -41,7 +45,7 @@ st.markdown("""
         color: #000000 !important;
     }
     
-    /* Botones azules (mejor contraste con fondo oscuro) */
+    /* Botones azules SOLO dentro de Molecular Analyzer */
     .stButton>button {
         border: 2px solid #1E88E5 !important;
         color: white !important;
@@ -94,27 +98,23 @@ st.markdown("""
         background-color: #5F9EA0 !important;  /* Tonos que combinan con plomo */
     }
     
-    /* Pestañas principales personalizadas */
-    .main-tabs .stTabs [data-baseweb="tab"] {
-        height: 60px;
-        padding: 0 25px;
-        color: #000000 !important;
-        background-color: #FFFFFF !important;
+    /* Pestañas personalizadas */
+    /* Pestañas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding: 0 20px;
+        color: #FFFFFF !important;
+        background-color: #81acde !important;  /* Tono intermedio */
         border-radius: 5px 5px 0 0;
         border: 1px solid #1E88E5;
-        font-size: 1.1rem !important;
-        font-weight: bold !important;
-        margin: 0 5px;
     }
-    .main-tabs .stTabs [aria-selected="true"] {
+    .stTabs [aria-selected="true"] {
         background-color: #1E88E5 !important;
         color: white !important;
-        border-bottom: 3px solid #FFFFFF;
-    }
-    .main-tabs .stTabs [data-baseweb="tab-list"] {
-        gap: 5px;
-        padding: 0 10px;
-    }
+    }    
     
     /* File uploader adaptado */
     .stFileUploader>div>div>div>div {
@@ -199,9 +199,6 @@ st.markdown("""
     .info-panel h3 {
         color: #1E88E5 !important;
         margin-top: 0;
-        border-bottom: 2px solid #1E88E5;
-        padding-bottom: 10px;
-        text-align: center;
     }
     .info-panel img {
         max-width: 100%;
@@ -242,14 +239,33 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    /* Botón de acknowledgments */
-    .ack-button {
-        position: absolute;
-        right: 20px;
-        bottom: 10px;
+    /* Estilos para el visualizador de cubos */
+    .cube-controls {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 5px solid #1E88E5;
+    }
+    .cube-status {
+        background-color: #f8f9fa !important;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-family: monospace;
+        color: #000000 !important;
+    }
+    .spectrum-display {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border-left: 5px solid #1E88E5;
+        color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
@@ -276,144 +292,253 @@ with col2:
     st.markdown('<p class="main-title">AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Molecular Spectrum Analyzer</p>', unsafe_allow_html=True)
 
-# Project description with relative positioning for the button
-desc_container = st.container()
-with desc_container:
-    st.markdown("""
-    <div class="description-panel" style="text-align: justify; position: relative;">
-    A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
-    <strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
-    <div class="ack-button">
-    """, unsafe_allow_html=True)
-    
-    # Botón de Acknowledgments en la esquina inferior derecha
-    if st.button("Project Acknowledgments", key="ack_btn"):
-        st.markdown("""
-        <div class="info-panel">
-            <h3>Project Acknowledgments</h3>
-            <img src="https://via.placeholder.com/800x400?text=Acknowledgments+Image" alt="Acknowledgments" style="width:100%;">
-            <p style="text-align: justify;">"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("</div></div>", unsafe_allow_html=True)
+# Project description
+st.markdown("""
+<div class="description-panel" style="text-align: justify;">
+A remarkable upsurge in the complexity of molecules identified in the interstellar medium (ISM) is currently occurring, with over 80 new species discovered in the last three years. A number of them have been emphasized by prebiotic experiments as vital molecular building blocks of life. Since our Solar System was formed from a molecular cloud in the ISM, it prompts the query as to whether the rich interstellar chemical reservoir could have played a role in the emergence of life. The improved sensitivities of state-of-the-art astronomical facilities, such as the Atacama Large Millimeter/submillimeter Array (ALMA) and the James Webb Space Telescope (JWST), are revolutionizing the discovery of new molecules in space. However, we are still just scraping the tip of the iceberg. We are far from knowing the complete catalogue of molecules that astrochemistry can offer, as well as the complexity they can reach.<br><br>
+<strong>Artificial Intelligence Integral Tool for AstroChemical Analysis (AI-ITACA)</strong>, proposes to combine complementary machine learning (ML) techniques to address all the challenges that astrochemistry is currently facing. AI-ITACA will significantly contribute to the development of new AI-based cutting-edge analysis software that will allow us to make a crucial leap in the characterization of the level of chemical complexity in the ISM, and in our understanding of the contribution that interstellar chemistry might have in the origin of life.
+</div>
+""", unsafe_allow_html=True)
 
-# === MAIN TABS ===
-tab1, tab2 = st.tabs(["Molecular Spectrum Analyzer", "Cube Visualizer"], className="main-tabs")
+# === CONFIGURATION ===
+GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
+TEMP_MODEL_DIR = "downloaded_models"
 
-# Función para limpiar el sidebar
-def clear_sidebar():
-    st.sidebar.empty()
+if not os.path.exists(TEMP_MODEL_DIR):
+    os.makedirs(TEMP_MODEL_DIR)
 
-# Función para mostrar configuración del Spectrum Analyzer
-def show_spectrum_sidebar():
-    st.sidebar.title("Spectrum Configuration")
-    
-    GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
-    TEMP_MODEL_DIR = "downloaded_models"
+@st.cache_data(ttl=3600, show_spinner=True)
+def download_models_from_drive(folder_url, output_dir):
+    model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
+    data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
 
-    if not os.path.exists(TEMP_MODEL_DIR):
-        os.makedirs(TEMP_MODEL_DIR)
+    if model_files and data_files:
+        return model_files, data_files, True
 
-    @st.cache_data(show_spinner=True)
-    def download_models_from_drive(folder_url, output_dir):
+    try:
+        progress_text = st.sidebar.empty()
+        progress_bar = st.sidebar.progress(0)
+        progress_text.text("📥 Preparing to download models...")
+        
+        file_count = 0
+        try:
+            file_count = 10  # Valor estimado para la simulación
+        except:
+            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
+            
+        with st.spinner("📥 Downloading models from Google Drive..."):
+            gdown.download_folder(
+                folder_url, 
+                output=output_dir, 
+                quiet=True,  # Silenciamos la salida por consola
+                use_cookies=False
+            )
+            for i in range(file_count):
+                time.sleep(0.5)  # Pequeña pausa para simular descarga
+                progress = int((i + 1) / file_count * 100)
+                progress_bar.progress(progress)
+                progress_text.text(f"📥 Downloading models... {progress}%")
+        
         model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
         data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-
+        
+        progress_bar.progress(100)
+        progress_text.text("Process Completed")
+        
         if model_files and data_files:
-            return model_files, data_files, True
+            st.sidebar.success("✅ Models downloaded successfully!")
+        else:
+            st.sidebar.error("❌ No models found in the specified folder")
+            
+        return model_files, data_files, True
+    except Exception as e:
+        st.sidebar.error(f"❌ Error downloading models: {str(e)}")
+        return [], [], False
 
+# === SIDEBAR ===
+st.sidebar.title("Configuration")
+
+model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
+
+# Clear previous analysis when new file is uploaded
+if 'prev_uploaded_file' not in st.session_state:
+    st.session_state.prev_uploaded_file = None
+
+current_uploaded_file = st.sidebar.file_uploader(
+    "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
+    type=None,
+    help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
+)
+
+# === NEW UNIT SELECTION WIDGETS ===
+st.sidebar.markdown("---")
+st.sidebar.subheader("Units Configuration")
+
+# Frequency units selection
+freq_unit = st.sidebar.selectbox(
+    "Frequency Units",
+    ["GHz", "MHz", "kHz", "Hz"],
+    index=0,
+    help="Select the frequency units for the input spectrum"
+)
+
+# Intensity units selection
+intensity_unit = st.sidebar.selectbox(
+    "Intensity Units",
+    ["K", "Jy"],
+    index=0,
+    help="Select the intensity units for the input spectrum"
+)
+
+# Conversion factors
+freq_conversion = {
+    "GHz": 1e9,
+    "MHz": 1e6,
+    "kHz": 1e3,
+    "Hz": 1.0
+}
+
+intensity_conversion = {
+    "K": 1.0,
+    "Jy": 1.0  # Placeholder - actual conversion would depend on the specific context
+}
+
+if current_uploaded_file != st.session_state.prev_uploaded_file:
+    # Clear previous analysis results
+    if 'analysis_results' in st.session_state:
+        del st.session_state['analysis_results']
+    if 'analysis_done' in st.session_state:
+        del st.session_state['analysis_done']
+    if 'base_fig' in st.session_state:
+        del st.session_state['base_fig']
+    if 'input_spec' in st.session_state:
+        del st.session_state['input_spec']
+    
+    st.session_state.prev_uploaded_file = current_uploaded_file
+    st.rerun()
+
+st.sidebar.subheader("Peak Matching Parameters")
+sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
+window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
+sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
+fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
+tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
+min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
+top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
+top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
+
+config = {
+    'trained_models_dir': TEMP_MODEL_DIR,
+    'peak_matching': {
+        'sigma_emission': sigma_emission,
+        'window_size': window_size,
+        'sigma_threshold': sigma_threshold,
+        'fwhm_ghz': fwhm_ghz,
+        'tolerance_ghz': tolerance_ghz,
+        'min_peak_height_ratio': min_peak_height_ratio,
+        'top_n_lines': top_n_lines,
+        'debug': True,
+        'top_n_similar': top_n_similar
+    },
+    'units': {
+        'frequency': freq_unit,
+        'intensity': intensity_unit
+    }
+}
+
+# === CUBE VISUALIZER FUNCTIONS ===
+@st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
+def load_alma_cube(file_path, max_mb=2048):
+    """Load ALMA cube from FITS file with memory management"""
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    
+    if file_size_mb > max_mb:
+        raise ValueError(f"File size ({file_size_mb:.2f} MB) exceeds maximum allowed ({max_mb} MB)")
+    
+    with fits.open(file_path) as hdul:
+        cube_data = hdul[0].data
+        header = hdul[0].header
+        
+        # Basic cube information
+        n_chan = cube_data.shape[0] if len(cube_data.shape) == 3 else 1
+        ra_size = cube_data.shape[-2] if len(cube_data.shape) >= 2 else 1
+        dec_size = cube_data.shape[-1] if len(cube_data.shape) >= 2 else 1
+        
+        # Get frequency information from header
         try:
-            progress_text = st.sidebar.empty()
-            progress_bar = st.sidebar.progress(0)
-            progress_text.text("📥 Preparing to download models...")
-            
-            file_count = 10  # Valor estimado para la simulación
-                
-            with st.spinner("📥 Downloading models from Google Drive..."):
-                gdown.download_folder(
-                    folder_url, 
-                    output=output_dir, 
-                    quiet=True,
-                    use_cookies=False
-                )
-                for i in range(file_count):
-                    time.sleep(0.5)
-                    progress = int((i + 1) / file_count * 100)
-                    progress_bar.progress(progress)
-                    progress_text.text(f"📥 Downloading models... {progress}%")
-            
-            model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-            data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-            
-            progress_bar.progress(100)
-            progress_text.text("Process Completed")
-            
-            if model_files and data_files:
-                st.sidebar.success("✅ Models downloaded successfully!")
-            else:
-                st.sidebar.error("❌ No models found in the specified folder")
-                
-            return model_files, data_files, True
-        except Exception as e:
-            st.sidebar.error(f"❌ Error downloading models: {str(e)}")
-            return [], [], False
-
-    model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
-
-    input_file = st.sidebar.file_uploader(
-        "Input Spectrum File ( . | .txt | .dat | .fits | .spec )",
-        type=None,
-        help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
-    )
-
-    st.sidebar.subheader("Peak Matching Parameters")
-    sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider")
-    window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
-    sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
-    fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
-    tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
-    min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
-    top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
-    top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
-
-    return {
-        'trained_models_dir': TEMP_MODEL_DIR,
-        'peak_matching': {
-            'sigma_emission': sigma_emission,
-            'window_size': window_size,
-            'sigma_threshold': sigma_threshold,
-            'fwhm_ghz': fwhm_ghz,
-            'tolerance_ghz': tolerance_ghz,
-            'min_peak_height_ratio': min_peak_height_ratio,
-            'top_n_lines': top_n_lines,
-            'debug': True,
-            'top_n_similar': top_n_similar
+            freq0 = header['CRVAL3']
+            dfreq = header['CDELT3']
+            freq_axis = freq0 + dfreq * np.arange(n_chan)
+        except:
+            freq_axis = None
+        
+        cube_info = {
+            'data': cube_data,
+            'header': header,
+            'n_chan': n_chan,
+            'ra_size': ra_size,
+            'dec_size': dec_size,
+            'freq_axis': freq_axis,
+            'file_size_mb': file_size_mb
         }
-    }, input_file, model_files
+    
+    return cube_info
 
-# Función para mostrar configuración del Cube Visualizer
-def show_cube_sidebar():
-    st.sidebar.title("Cube Configuration")
-    cube_file = st.sidebar.file_uploader(
-        "Drag and Drop Cube here",
-        type=['fits', 'dat'],
-        help="Upload your spectral cube file (FITS format preferred)"
-    )
-    return cube_file
+def display_cube_info(cube_info):
+    """Display basic information about the loaded cube"""
+    st.markdown(f"""
+    <div class="cube-status">
+        <strong>Cube Information:</strong><br>
+        Dimensions: {cube_info['data'].shape}<br>
+        Channels: {cube_info['n_chan']}<br>
+        RA size: {cube_info['ra_size']} pixels<br>
+        Dec size: {cube_info['dec_size']} pixels<br>
+        File size: {cube_info['file_size_mb']:.2f} MB<br>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Contenido de las pestañas principales
-with tab1:
+def extract_spectrum_from_region(cube_data, x_range, y_range):
+    """Extract average spectrum from selected region"""
+    if len(cube_data.shape) == 3:
+        # For 3D cubes: average over spatial dimensions
+        spectrum = np.mean(cube_data[:, y_range[0]:y_range[1], x_range[0]:x_range[1]], axis=(1, 2))
+    else:
+        # For 2D images: return None
+        spectrum = None
+    return spectrum
+
+def create_spectrum_download(freq_axis, spectrum, freq_unit='GHz', intensity_unit='K'):
+    """Create downloadable text file with spectrum data"""
+    if freq_axis is None or spectrum is None:
+        return None
+    
+    # Convert frequency based on selected unit
+    if freq_unit == 'GHz':
+        freq_values = freq_axis / 1e9
+    elif freq_unit == 'MHz':
+        freq_values = freq_axis / 1e6
+    elif freq_unit == 'kHz':
+        freq_values = freq_axis / 1e3
+    else:  # Hz
+        freq_values = freq_axis
+    
+    # Create the file content
+    content = f"!xValues({freq_unit})\tyValues({intensity_unit})\n"
+    for freq, val in zip(freq_values, spectrum):
+        content += f"{freq:.8f}\t{val:.6f}\n"
+    
+    return content
+
+# === MAIN TABS ===
+tab_molecular, tab_cube = st.tabs(["Molecular Analyzer", "Cube Visualizer"])
+
+with tab_molecular:
+    # === MOLECULAR ANALYZER CONTENT ===
     st.title("Molecular Spectrum Analyzer | AI - ITACA")
-    
-    # Mostrar sidebar específico para Spectrum Analyzer
-    config, input_file, model_files = show_spectrum_sidebar()
-    
-    # Resto del contenido de Spectrum Analyzer...
-    # (Aquí iría todo el contenido que ya tenías para el Spectrum Analyzer)
+
     # PARAMETERS EXPLANATION
     st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns([0.5, 0.5, 0.5])
     with col1:
         params_tab = st.button("📝 Parameters Explanation", key="params_btn", 
                             help="Click to show parameters explanation")
@@ -421,11 +546,15 @@ with tab1:
         flow_tab = st.button("📊 Flow of Work Diagram", key="flow_btn", 
                         help="Click to show the workflow diagram")
 
+    with col3:
+        Acknowledgments_tab = st.button("✅ Acknowledgments", key="Acknowledgments_tab", 
+                        help="Click to show Acknowledgments")
+
     if params_tab:
         with st.container():
             st.markdown("""
             <div class="description-panel">
-                <h3>Technical Parameters Guide</h3>
+                <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
                 
             <div style="margin-bottom: 25px;">
             <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
@@ -471,9 +600,13 @@ with tab1:
         with st.container():
             st.markdown("""
                 <div class="info-panel">
-                    <h3>Flow of Work Diagram</h3>
-                    <img src="https://via.placeholder.com/800x400?text=Flow+of+Work+Diagram" alt="Flow of Work" style="width:100%;">
+                    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
                 </div>
+            """, unsafe_allow_html=True)
+
+            st.image("Flow_of_Work.jpg", use_container_width=True)
+
+            st.markdown("""
                 <div style="margin-top: 20px;">
                 <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
                 <ol style="color: white; padding-left: 20px;">
@@ -490,9 +623,25 @@ with tab1:
                 </div>
             """, unsafe_allow_html=True)
 
-    if input_file is not None:
+    # ACKNOWLEDGMENTS
+    if Acknowledgments_tab:
+        with st.container():
+            st.markdown("""
+                <div class="info-panel">
+                    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+                </div>
+            """, unsafe_allow_html=True)
+
+            st.image("Acknowledgments.png", use_container_width=True)
+
+            st.markdown("""<div class="description-panel" style="text-align: justify;">
+            "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan".
+            </div>
+            """, unsafe_allow_html=True)
+
+    if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
-            tmp_file.write(input_file.getvalue())
+            tmp_file.write(current_uploaded_file.getvalue())
             tmp_path = tmp_file.name
 
         if not model_files:
@@ -504,6 +653,7 @@ with tab1:
 
             if analyze_btn:
                 try:
+                    # Configurar la barra de progreso para el análisis
                     progress_text = st.empty()
                     progress_bar = st.progress(0)
                     
@@ -523,11 +673,11 @@ with tab1:
                     update_analysis_progress(1)
                     mol_name = selected_model.replace('_model.keras', '')
 
-                    model_path = os.path.join(config['trained_models_dir'], selected_model)
+                    model_path = os.path.join(TEMP_MODEL_DIR, selected_model)
                     model = tf.keras.models.load_model(model_path)
 
                     update_analysis_progress(2)
-                    data_file = os.path.join(config['trained_models_dir'], f'{mol_name}_train_data.npz')
+                    data_file = os.path.join(TEMP_MODEL_DIR, f'{mol_name}_train_data.npz')
                     if not os.path.exists(data_file):
                         st.error(f"Training data not found for {mol_name}")
                     else:
@@ -545,6 +695,15 @@ with tab1:
                             filenames, headers, train_logn, train_tex,
                             config, mol_name
                         )
+
+                        # Apply unit conversions to the results
+                        if freq_unit != 'GHz':
+                            results['input_freq'] = results['input_freq'] * 1e9 / freq_conversion[freq_unit]
+                            results['best_match']['x_synth'] = results['best_match']['x_synth'] * 1e9 / freq_conversion[freq_unit]
+                        
+                        if intensity_unit != 'K':
+                            results['input_spec'] = results['input_spec'] * intensity_conversion[intensity_unit]
+                            results['best_match']['y_synth'] = results['best_match']['y_synth'] * intensity_conversion[intensity_unit]
 
                         update_analysis_progress(6)
                         st.success("Analysis completed successfully!")
@@ -571,8 +730,8 @@ with tab1:
                             plot_bgcolor='#0D0F14',
                             paper_bgcolor='#0D0F14',
                             margin=dict(l=50, r=50, t=60, b=50),
-                            xaxis_title='Frequency (GHz)',
-                            yaxis_title='Intensity (K)',
+                            xaxis_title=f'Frequency ({freq_unit})',
+                            yaxis_title=f'Intensity ({intensity_unit})',
                             hovermode='x unified',
                             legend=dict(
                                 orientation="h",
@@ -596,8 +755,9 @@ with tab1:
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
 
+            # Mostrar pestañas si el análisis está completo
             if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
-                subtab1, subtab2, subtab3, subtab4, subtab5, subtab6 = st.tabs([
+                tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     "Interactive Summary", 
                     "Molecule Best Match", 
                     "Peak Matching", 
@@ -606,7 +766,7 @@ with tab1:
                     "Top Selection: Tex"
                 ])
 
-                with subtab1:
+                with tab0:
                     results = st.session_state['analysis_results']
                     st.markdown(f"""
                     <div class="summary-panel">
@@ -628,22 +788,23 @@ with tab1:
                     fig = go.Figure(st.session_state['base_fig'])
                     
                     if show_sigma:
-                        sigma_line_y = config['peak_matching']['sigma_emission'] * np.std(st.session_state['input_spec'])
+                        sigma_line_y = sigma_emission * np.std(st.session_state['input_spec'])
                         fig.add_hline(y=sigma_line_y, line_dash="dot",
-                                    annotation_text=f"Sigma Emission: {config['peak_matching']['sigma_emission']}",
+                                    annotation_text=f"Sigma Emission: {sigma_emission}",
                                     annotation_position="bottom right",
                                     line_color="yellow")
                     
                     if show_threshold:
-                        threshold_line_y = config['peak_matching']['sigma_threshold'] * np.std(st.session_state['input_spec'])
+                        threshold_line_y = sigma_threshold * np.std(st.session_state['input_spec'])
                         fig.add_hline(y=threshold_line_y, line_dash="dot",
-                                    annotation_text=f"Sigma Threshold: {config['peak_matching']['sigma_threshold']}",
+                                    annotation_text=f"Sigma Threshold: {sigma_threshold}",
                                     annotation_position="bottom left",
                                     line_color="cyan")
                     
+                    # Mostrar el gráfico
                     st.plotly_chart(fig, use_container_width=True, key="main_plot")
 
-                with subtab2:
+                with tab1:
                     if 'analysis_results' in st.session_state:
                         results = st.session_state['analysis_results']
                         st.pyplot(plot_summary_comparison(
@@ -651,7 +812,7 @@ with tab1:
                             results['best_match'], tmp_path
                         ))
 
-                with subtab3:
+                with tab2:
                     if 'analysis_results' in st.session_state:
                         results = st.session_state['analysis_results']
                         st.pyplot(plot_zoomed_peaks_comparison(
@@ -659,7 +820,7 @@ with tab1:
                             results['best_match']
                         ))
 
-                with subtab4:
+                with tab3:
                     if 'analysis_results' in st.session_state:
                         results = st.session_state['analysis_results']
                         st.pyplot(plot_best_matches(
@@ -669,7 +830,7 @@ with tab1:
                             results['train_filenames'], results['input_logn']
                         ))
 
-                with subtab5:
+                with tab4:
                     if 'analysis_results' in st.session_state:
                         results = st.session_state['analysis_results']
                         st.pyplot(plot_tex_metrics(
@@ -679,7 +840,7 @@ with tab1:
                             results['input_tex'], results['input_logn']
                         ))
 
-                with subtab6:
+                with tab5:
                     if 'analysis_results' in st.session_state:
                         results = st.session_state['analysis_results']
                         st.pyplot(plot_similarity_metrics(
@@ -689,6 +850,7 @@ with tab1:
                             results['input_logn'], results['input_tex']
                         ))
 
+    # Instructions
     st.sidebar.markdown("""
     **Instructions:**
     1. Select the directory containing the trained models
@@ -705,28 +867,198 @@ with tab1:
     - 📊 Range Buttons: Quick zoom to percentage ranges
     """)
 
-with tab2:
-    st.title("Cube Visualizer | AI - ITACA")
+with tab_cube:
+    # === CUBE VISUALIZER CONTENT ===
+    st.title("Cube Visualizer | AI-ITACA")
+    st.markdown("""
+    <div class="description-panel">
+        <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">3D Spectral Cube Visualization</h3>
+        <p>Upload and visualize ALMA spectral cubes (FITS format) up to 2GB in size. Explore different channels and create integrated intensity maps.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Limpiar sidebar y mostrar configuración específica para cubos
-    cube_file = show_cube_sidebar()
+    cube_file = st.file_uploader(
+        "Upload ALMA Cube (FITS format)",
+        type=["fits", "FITS"],
+        help="Drag and drop ALMA cube FITS file here (up to 2GB)"
+    )
     
-    if cube_file:
-        st.success("Cube file uploaded successfully!")
-        st.markdown("""
-        <div class="info-panel">
-            <h3>Cube Visualization</h3>
-            <img src="https://via.placeholder.com/800x400?text=Cube+Visualization" alt="Cube Visualization" style="width:100%;">
-            <p style="text-align: center;">Cube visualization tools will be displayed here once implemented.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.info("Please upload a spectral cube file to begin visualization")
-    
-    st.sidebar.markdown("""
-    **Cube Visualization Instructions:**
-    1. Upload your spectral cube file (FITS format preferred)
-    2. Adjust visualization parameters as needed
-    3. Explore different slices of the cube
-    4. Analyze spectral features across spatial dimensions
-    """)
+    if cube_file is not None:
+        with st.spinner("Processing ALMA cube..."):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".fits") as tmp_cube:
+                tmp_cube.write(cube_file.getvalue())
+                tmp_cube_path = tmp_cube.name
+            
+            try:
+                cube_info = load_alma_cube(tmp_cube_path)
+                display_cube_info(cube_info)
+                
+                st.success("ALMA cube loaded successfully!")
+                
+                # Basic cube visualization controls
+                st.markdown("""
+                <div class="cube-controls">
+                    <h4 style="color: #1E88E5; margin-top: 0;">Cube Visualization Controls</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    channel = st.slider(
+                        "Select Channel",
+                        0, cube_info['n_chan']-1, cube_info['n_chan']//2,
+                        help="Navigate through spectral channels"
+                    )
+                    
+                    st.markdown(f"""
+                    <div class="cube-status">
+                        <strong>Current Channel:</strong> {channel}<br>
+                        {f"Frequency: {cube_info['freq_axis'][channel]/1e9:.4f} GHz" if cube_info['freq_axis'] is not None else ""}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div style="margin-top: 20px;">
+                        <strong>Visualization Options:</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    show_rms = st.checkbox("Show RMS noise level", value=True)
+                    scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0)
+                
+                # Create interactive plot with Plotly
+                if len(cube_info['data'].shape) == 3:
+                    img_data = cube_info['data'][channel, :, :]
+                else:
+                    img_data = cube_info['data']
+                
+                if scale == "Log":
+                    img_data = np.log10(img_data - np.nanmin(img_data) + 1)
+                elif scale == "Sqrt":
+                    img_data = np.sqrt(img_data - np.nanmin(img_data))
+                
+                # Create interactive figure
+                fig = px.imshow(
+                    img_data,
+                    origin='lower',
+                    color_continuous_scale='viridis',
+                    labels={'color': 'Intensity (K)'},
+                    title=f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]/1e9:.4f} GHz)" if cube_info['freq_axis'] is not None else "")
+                )
+                
+                fig.update_layout(
+                    plot_bgcolor='#0D0F14',
+                    paper_bgcolor='#0D0F14',
+                    margin=dict(l=50, r=50, t=80, b=50),
+                    xaxis_title="RA (pixels)",
+                    yaxis_title="Dec (pixels)",
+                    font=dict(color='white'),
+                    xaxis=dict(gridcolor='#3A3A3A'),
+                    yaxis=dict(gridcolor='#3A3A3A')
+                )
+                
+                # Display the interactive plot
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Region selection and spectrum extraction
+                st.markdown("""
+                <div class="cube-controls">
+                    <h4 style="color: #1E88E5; margin-top: 0;">Region Selection</h4>
+                    <p>Click on the image to select a pixel or draw a rectangle to select a region.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # If we have a cube with spectral dimension
+                if len(cube_info['data'].shape) == 3 and cube_info['freq_axis'] is not None:
+                    # Extract spectrum from selected region
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        x_range = st.slider("X Range (pixels)", 0, cube_info['ra_size']-1, (0, cube_info['ra_size']-1))
+                    with col2:
+                        y_range = st.slider("Y Range (pixels)", 0, cube_info['dec_size']-1, (0, cube_info['dec_size']-1))
+                    
+                    spectrum = extract_spectrum_from_region(
+                        cube_info['data'],
+                        x_range,
+                        y_range
+                    )
+                    
+                    if spectrum is not None:
+                        # Plot the spectrum with Plotly
+                        fig_spec = go.Figure()
+                        fig_spec.add_trace(go.Scatter(
+                            x=cube_info['freq_axis']/1e9,
+                            y=spectrum,
+                            mode='lines',
+                            line=dict(color='#1E88E5', width=2)
+                        ))
+                        
+                        fig_spec.update_layout(
+                            plot_bgcolor='#0D0F14',
+                            paper_bgcolor='#0D0F14',
+                            margin=dict(l=50, r=50, t=60, b=50),
+                            xaxis_title='Frequency (GHz)',
+                            yaxis_title='Intensity (K)',
+                            hovermode='x unified',
+                            height=400,
+                            font=dict(color='white'),
+                            xaxis=dict(gridcolor='#3A3A3A'),
+                            yaxis=dict(gridcolor='#3A3A3A')
+                        )
+                        
+                        st.markdown("""
+                        <div class="spectrum-display">
+                            <h4 style="color: #1E88E5; margin-top: 0;">Extracted Spectrum</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.plotly_chart(fig_spec, use_container_width=True)
+                        
+                        # Create download button for the spectrum
+                        spectrum_content = create_spectrum_download(
+                            cube_info['freq_axis'], 
+                            spectrum,
+                            freq_unit='GHz',
+                            intensity_unit='K'
+                        )
+                        if spectrum_content:
+                            st.download_button(
+                                label="Download Spectrum as TXT",
+                                data=spectrum_content,
+                                file_name="extracted_spectrum.txt",
+                                mime="text/plain"
+                            )
+                
+                os.unlink(tmp_cube_path)
+                
+            except Exception as e:
+                st.error(f"Error processing ALMA cube: {str(e)}")
+                if os.path.exists(tmp_cube_path):
+                    os.unlink(tmp_cube_path)
+
+# === CACHED FUNCTIONS ===
+@st.cache_data(ttl=3600)
+def load_model(_model_path):
+    return tf.keras.models.load_model(_model_path)
+
+@st.cache_data(ttl=3600)
+def load_training_data(data_file):
+    with np.load(data_file) as data:
+        return {
+            'train_freq': data['train_freq'],
+            'train_data': data['train_data'],
+            'train_logn': data['train_logn'],
+            'train_tex': data['train_tex'],
+            'headers': data['headers'],
+            'filenames': data['filenames']
+        }
+
+@st.cache_data(ttl=3600)
+def cached_analyze_spectrum(tmp_path, model, train_data, train_freq, filenames, headers, train_logn, train_tex, config, mol_name):
+    return analyze_spectrum(
+        tmp_path, model, train_data, train_freq,
+        filenames, headers, train_logn, train_tex,
+        config, mol_name
+    )
