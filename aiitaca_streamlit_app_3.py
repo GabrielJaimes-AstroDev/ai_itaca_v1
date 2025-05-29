@@ -713,7 +713,7 @@ with tab_molecular:
 
             st.markdown("""
             <div class="pro-tip">
-                <p><strong>Note:</strong> The training dataset was generated using RADEX non-LTE radiative transfer models with typical ISM conditions.</p>
+                <p><strong>Note:</strong> The training dataset was generated using LTE radiative transfer models under typical ISM conditions.</p>
             </div>
             """, unsafe_allow_html=True)
 
