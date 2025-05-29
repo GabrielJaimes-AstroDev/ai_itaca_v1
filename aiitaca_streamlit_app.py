@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from core_functions import *
 import tempfile
 import plotly.graph_objects as go
+import plotly.express as px
 import tensorflow as tf
 import gdown
 import shutil
@@ -369,6 +370,39 @@ current_uploaded_file = st.sidebar.file_uploader(
     help="Drag and drop file here ( . | .txt | .dat | .fits | .spec ). Limit 200MB per file"
 )
 
+# === NEW UNIT SELECTION WIDGETS ===
+st.sidebar.markdown("---")
+st.sidebar.subheader("Units Configuration")
+
+# Frequency units selection
+freq_unit = st.sidebar.selectbox(
+    "Frequency Units",
+    ["GHz", "MHz", "kHz", "Hz"],
+    index=0,
+    help="Select the frequency units for the input spectrum"
+)
+
+# Intensity units selection
+intensity_unit = st.sidebar.selectbox(
+    "Intensity Units",
+    ["K", "Jy"],
+    index=0,
+    help="Select the intensity units for the input spectrum"
+)
+
+# Conversion factors
+freq_conversion = {
+    "GHz": 1e9,
+    "MHz": 1e6,
+    "kHz": 1e3,
+    "Hz": 1.0
+}
+
+intensity_conversion = {
+    "K": 1.0,
+    "Jy": 1.0  # Placeholder - actual conversion would depend on the specific context
+}
+
 if current_uploaded_file != st.session_state.prev_uploaded_file:
     # Clear previous analysis results
     if 'analysis_results' in st.session_state:
@@ -405,6 +439,10 @@ config = {
         'top_n_lines': top_n_lines,
         'debug': True,
         'top_n_similar': top_n_similar
+    },
+    'units': {
+        'frequency': freq_unit,
+        'intensity': intensity_unit
     }
 }
 
@@ -469,15 +507,25 @@ def extract_spectrum_from_region(cube_data, x_range, y_range):
         spectrum = None
     return spectrum
 
-def create_spectrum_download(freq_axis, spectrum):
+def create_spectrum_download(freq_axis, spectrum, freq_unit='GHz', intensity_unit='K'):
     """Create downloadable text file with spectrum data"""
     if freq_axis is None or spectrum is None:
         return None
     
+    # Convert frequency based on selected unit
+    if freq_unit == 'GHz':
+        freq_values = freq_axis / 1e9
+    elif freq_unit == 'MHz':
+        freq_values = freq_axis / 1e6
+    elif freq_unit == 'kHz':
+        freq_values = freq_axis / 1e3
+    else:  # Hz
+        freq_values = freq_axis
+    
     # Create the file content
-    content = "!xValues(GHz)\tyValues(K)\n"
-    for freq, val in zip(freq_axis, spectrum):
-        content += f"{freq/1e9:.8f}\t{val:.6f}\n"
+    content = f"!xValues({freq_unit})\tyValues({intensity_unit})\n"
+    for freq, val in zip(freq_values, spectrum):
+        content += f"{freq:.8f}\t{val:.6f}\n"
     
     return content
 
@@ -648,6 +696,15 @@ with tab_molecular:
                             config, mol_name
                         )
 
+                        # Apply unit conversions to the results
+                        if freq_unit != 'GHz':
+                            results['input_freq'] = results['input_freq'] * 1e9 / freq_conversion[freq_unit]
+                            results['best_match']['x_synth'] = results['best_match']['x_synth'] * 1e9 / freq_conversion[freq_unit]
+                        
+                        if intensity_unit != 'K':
+                            results['input_spec'] = results['input_spec'] * intensity_conversion[intensity_unit]
+                            results['best_match']['y_synth'] = results['best_match']['y_synth'] * intensity_conversion[intensity_unit]
+
                         update_analysis_progress(6)
                         st.success("Analysis completed successfully!")
 
@@ -673,8 +730,8 @@ with tab_molecular:
                             plot_bgcolor='#0D0F14',
                             paper_bgcolor='#0D0F14',
                             margin=dict(l=50, r=50, t=60, b=50),
-                            xaxis_title='Frequency (GHz)',
-                            yaxis_title='Intensity (K)',
+                            xaxis_title=f'Frequency ({freq_unit})',
+                            yaxis_title=f'Intensity ({intensity_unit})',
                             hovermode='x unified',
                             legend=dict(
                                 orientation="h",
@@ -812,7 +869,7 @@ with tab_molecular:
 
 with tab_cube:
     # === CUBE VISUALIZER CONTENT ===
-    st.title("Cube Visualizer | AI - ITACA")
+    st.title("Cube Visualizer | AI-ITACA")
     st.markdown("""
     <div class="description-panel">
         <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">3D Spectral Cube Visualization</h3>
@@ -857,7 +914,7 @@ with tab_cube:
                     st.markdown(f"""
                     <div class="cube-status">
                         <strong>Current Channel:</strong> {channel}<br>
-                        {f"Frequency: {cube_info['freq_axis'][channel]:.2f} Hz" if cube_info['freq_axis'] is not None else ""}
+                        {f"Frequency: {cube_info['freq_axis'][channel]/1e9:.4f} GHz" if cube_info['freq_axis'] is not None else ""}
                     </div>
                     """, unsafe_allow_html=True)
                 
@@ -870,9 +927,7 @@ with tab_cube:
                     show_rms = st.checkbox("Show RMS noise level", value=True)
                     scale = st.selectbox("Image Scale", ["Linear", "Log", "Sqrt"], index=0)
                 
-                # Create figure with click events
-                fig, ax = plt.subplots(figsize=(10, 8))
-                
+                # Create interactive plot with Plotly
                 if len(cube_info['data'].shape) == 3:
                     img_data = cube_info['data'][channel, :, :]
                 else:
@@ -883,16 +938,28 @@ with tab_cube:
                 elif scale == "Sqrt":
                     img_data = np.sqrt(img_data - np.nanmin(img_data))
                 
-                im = ax.imshow(img_data, origin='lower', cmap='viridis')
-                ax.set_title(f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]:.2f} Hz)" if cube_info['freq_axis'] is not None else ""))
-                ax.set_xlabel("RA (pixels)")
-                ax.set_ylabel("Dec (pixels)")
+                # Create interactive figure
+                fig = px.imshow(
+                    img_data,
+                    origin='lower',
+                    color_continuous_scale='viridis',
+                    labels={'color': 'Intensity (K)'},
+                    title=f"Channel {channel}" + (f" ({cube_info['freq_axis'][channel]/1e9:.4f} GHz)" if cube_info['freq_axis'] is not None else "")
+                )
                 
-                # Add colorbar
-                plt.colorbar(im, ax=ax, label='Intensity (K)')
+                fig.update_layout(
+                    plot_bgcolor='#0D0F14',
+                    paper_bgcolor='#0D0F14',
+                    margin=dict(l=50, r=50, t=80, b=50),
+                    xaxis_title="RA (pixels)",
+                    yaxis_title="Dec (pixels)",
+                    font=dict(color='white'),
+                    xaxis=dict(gridcolor='#3A3A3A'),
+                    yaxis=dict(gridcolor='#3A3A3A')
+                )
                 
-                # Display the plot
-                st.pyplot(fig)
+                # Display the interactive plot
+                st.plotly_chart(fig, use_container_width=True)
                 
                 # Region selection and spectrum extraction
                 st.markdown("""
@@ -902,45 +969,67 @@ with tab_cube:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Get click coordinates
-                click_data = st.session_state.get('click_data', None)
-                
                 # If we have a cube with spectral dimension
                 if len(cube_info['data'].shape) == 3 and cube_info['freq_axis'] is not None:
                     # Extract spectrum from selected region
-                    if click_data and 'x_range' in click_data and 'y_range' in click_data:
-                        spectrum = extract_spectrum_from_region(
-                            cube_info['data'],
-                            click_data['x_range'],
-                            click_data['y_range']
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        x_range = st.slider("X Range (pixels)", 0, cube_info['ra_size']-1, (0, cube_info['ra_size']-1))
+                    with col2:
+                        y_range = st.slider("Y Range (pixels)", 0, cube_info['dec_size']-1, (0, cube_info['dec_size']-1))
+                    
+                    spectrum = extract_spectrum_from_region(
+                        cube_info['data'],
+                        x_range,
+                        y_range
+                    )
+                    
+                    if spectrum is not None:
+                        # Plot the spectrum with Plotly
+                        fig_spec = go.Figure()
+                        fig_spec.add_trace(go.Scatter(
+                            x=cube_info['freq_axis']/1e9,
+                            y=spectrum,
+                            mode='lines',
+                            line=dict(color='#1E88E5', width=2)
+                        ))
+                        
+                        fig_spec.update_layout(
+                            plot_bgcolor='#0D0F14',
+                            paper_bgcolor='#0D0F14',
+                            margin=dict(l=50, r=50, t=60, b=50),
+                            xaxis_title='Frequency (GHz)',
+                            yaxis_title='Intensity (K)',
+                            hovermode='x unified',
+                            height=400,
+                            font=dict(color='white'),
+                            xaxis=dict(gridcolor='#3A3A3A'),
+                            yaxis=dict(gridcolor='#3A3A3A')
                         )
                         
-                        if spectrum is not None:
-                            # Plot the spectrum
-                            fig_spec, ax_spec = plt.subplots(figsize=(10, 4))
-                            ax_spec.plot(cube_info['freq_axis']/1e9, spectrum, '-', color='#1E88E5')
-                            ax_spec.set_xlabel('Frequency (GHz)')
-                            ax_spec.set_ylabel('Intensity (K)')
-                            ax_spec.set_title('Extracted Spectrum from Selected Region')
-                            ax_spec.grid(True, alpha=0.3)
-                            
-                            st.markdown("""
-                            <div class="spectrum-display">
-                                <h4 style="color: #1E88E5; margin-top: 0;">Extracted Spectrum</h4>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            st.pyplot(fig_spec)
-                            
-                            # Create download button for the spectrum
-                            spectrum_content = create_spectrum_download(cube_info['freq_axis'], spectrum)
-                            if spectrum_content:
-                                st.download_button(
-                                    label="Download Spectrum as TXT",
-                                    data=spectrum_content,
-                                    file_name="extracted_spectrum.txt",
-                                    mime="text/plain"
-                                )
+                        st.markdown("""
+                        <div class="spectrum-display">
+                            <h4 style="color: #1E88E5; margin-top: 0;">Extracted Spectrum</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.plotly_chart(fig_spec, use_container_width=True)
+                        
+                        # Create download button for the spectrum
+                        spectrum_content = create_spectrum_download(
+                            cube_info['freq_axis'], 
+                            spectrum,
+                            freq_unit='GHz',
+                            intensity_unit='K'
+                        )
+                        if spectrum_content:
+                            st.download_button(
+                                label="Download Spectrum as TXT",
+                                data=spectrum_content,
+                                file_name="extracted_spectrum.txt",
+                                mime="text/plain"
+                            )
                 
                 os.unlink(tmp_cube_path)
                 
