@@ -340,68 +340,94 @@ def calculate_global_score(matches):
     return np.mean([m['score'] for m in matches])
 
 def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_peaks_list=None, config=DEFAULT_CONFIG):
-    def detect_emission_regions(spec, config):
-        mean = np.mean(spec)
-        std = np.std(spec)
-        threshold = mean + config['peak_matching']['sigma_emission'] * std
-        peaks, _ = find_peaks(spec, height=threshold)
-        window = config['peak_matching']['window_size']
-        return [(max(p - window, 0), min(p + window, len(spec))) for p in peaks]
-
-    def extract_peak_info(spec, regions):
-        peaks_info = []
-        for start, end in regions:
-            sub_spec = spec[start:end]
-            if len(sub_spec) == 0:
-                continue
-            local_idx = np.argmax(sub_spec)
-            global_idx = start + local_idx
-            height = spec[global_idx]
-            peaks_info.append({'center': global_idx, 'height': height})
-        return peaks_info
-
-    similarities = cosine_similarity(input_spec.reshape(1, -1), train_data.squeeze())[0]
-
-    distances = np.zeros(len(train_data))
-
-    if input_peaks is None:
-        input_regions = detect_emission_regions(input_spec, config)
-        input_peaks = extract_peak_info(input_spec, input_regions)
-
-    for i, train_spec in enumerate(train_data):
-        train_peaks = train_peaks_list[i] if train_peaks_list is not None and i < len(train_peaks_list) else None
-
-        if train_peaks is None:
-            train_regions = detect_emission_regions(train_spec, config)
-            train_peaks = extract_peak_info(train_spec, train_regions)
-
-        peak_pos_score = 0
-        peak_intensity_score = 0
-        matched_peaks = 0
-
-        for ip in input_peaks:
-            closest_dist = float('inf')
-            closest_height_diff = float('inf')
-
-            for tp in train_peaks:
-                dist = abs(ip['center'] - tp['center'])
-                if dist < closest_dist:
-                    closest_dist = dist
-                    closest_height_diff = abs(ip['height'] - tp['height'])
-
-            if closest_dist <= 3:
-                peak_pos_score += closest_dist
-                peak_intensity_score += closest_height_diff / ip['height'] if ip['height'] != 0 else 0
-                matched_peaks += 1
-
-        if matched_peaks > 0:
-            avg_pos_score = peak_pos_score / matched_peaks
-            avg_intensity_score = peak_intensity_score / matched_peaks
-            distances[i] = avg_pos_score + 2 * avg_intensity_score
-        else:
-            distances[i] = float('inf')
-
-    return similarities, distances
+    try:
+        # 1. Validación y saneamiento de los datos de entrada
+        input_spec = np.nan_to_num(input_spec, nan=0.0, posinf=np.finfo(np.float64).max, neginf=np.finfo(np.float64).min)
+        train_data = np.nan_to_num(train_data, nan=0.0, posinf=np.finfo(np.float64).max, neginf=np.finfo(np.float64).min)
+        
+        # 2. Normalización de los espectros para evitar valores extremos
+        input_spec = (input_spec - np.min(input_spec)) / (np.max(input_spec) - np.min(input_spec) + 1e-10)
+        train_data = (train_data - np.min(train_data, axis=1, keepdims=True)) / \
+                    (np.max(train_data, axis=1, keepdims=True) - np.min(train_data, axis=1, keepdims=True) + 1e-10)
+        
+        # 3. Verificación final de valores finitos
+        if not np.all(np.isfinite(input_spec)) or not np.all(np.isfinite(train_data)):
+            raise ValueError("Datos no finitos después del saneamiento")
+        
+        # Cálculo de similitud del coseno con verificación
+        try:
+            similarities = cosine_similarity(input_spec.reshape(1, -1), train_data.squeeze())[0]
+        except Exception as e:
+            print(f"Error en cosine_similarity: {str(e)}")
+            similarities = np.zeros(train_data.shape[0])
+        
+        distances = np.zeros(len(train_data))
+        
+        # 4. Detección de regiones de emisión con validación
+        def safe_detect_regions(spec, config):
+            try:
+                mean = np.mean(spec[np.isfinite(spec)])
+                std = np.std(spec[np.isfinite(spec)])
+                threshold = mean + config['peak_matching']['sigma_emission'] * std
+                peaks, _ = find_peaks(spec, height=threshold)
+                window = config['peak_matching']['window_size']
+                return [(max(p - window, 0), min(p + window, len(spec))) for p in peaks]
+            except:
+                return []
+        
+        if input_peaks is None:
+            input_regions = safe_detect_regions(input_spec, config)
+            input_peaks = extract_peak_info(input_spec, input_regions) if input_regions else []
+        
+        # 5. Cálculo de distancias mejorado con manejo de errores
+        for i, train_spec in enumerate(train_data):
+            try:
+                train_peaks = train_peaks_list[i] if train_peaks_list is not None and i < len(train_peaks_list) else None
+                
+                if train_peaks is None:
+                    train_regions = safe_detect_regions(train_spec, config)
+                    train_peaks = extract_peak_info(train_spec, train_regions) if train_regions else []
+                
+                peak_pos_score = 0
+                peak_intensity_score = 0
+                matched_peaks = 0
+                
+                for ip in input_peaks:
+                    try:
+                        closest_dist = float('inf')
+                        closest_height_diff = float('inf')
+                        
+                        for tp in train_peaks:
+                            try:
+                                dist = abs(ip['center'] - tp['center'])
+                                if dist < closest_dist:
+                                    closest_dist = dist
+                                    closest_height_diff = abs(ip['height'] - tp['height'])
+                            except:
+                                continue
+                        
+                        if closest_dist <= 3:
+                            peak_pos_score += closest_dist
+                            peak_intensity_score += closest_height_diff / ip['height'] if ip['height'] != 0 else 0
+                            matched_peaks += 1
+                    except:
+                        continue
+                
+                if matched_peaks > 0:
+                    avg_pos_score = peak_pos_score / matched_peaks
+                    avg_intensity_score = peak_intensity_score / matched_peaks
+                    distances[i] = avg_pos_score + 2 * avg_intensity_score
+                else:
+                    distances[i] = float('inf')
+            
+            except Exception as e:
+                print(f"Error calculando distancia para espectro {i}: {str(e)}")
+                distances[i] = float('inf')
+        
+        return similarities, distances
+    
+    except Exception as e:
+        raise ValueError(f"Error calculando métricas de similitud: {str(e)}")
 
 def plot_similarity_metrics(train_logn, train_tex, similarities, distances, 
                           top_similar_indices, input_logn, input_tex, fig=None):
