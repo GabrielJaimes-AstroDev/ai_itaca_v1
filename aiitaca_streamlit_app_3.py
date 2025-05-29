@@ -263,9 +263,42 @@ st.markdown("""
         border-left: 5px solid #1E88E5;
         color: #000000 !important;
     }
+    
+    /* Model info panel */
+    .model-info-panel {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 10px;
+        border-left: 5px solid #1E88E5;
+        color: black !important;
+    }
+    .model-info-panel h4 {
+        color: #1E88E5 !important;
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    .model-info-panel p {
+        margin: 5px 0;
+        font-size: 0.9em;
+    }
+    .model-info-panel img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    
+    /* Disabled state for buttons and controls */
+    .stButton>button:disabled,
+    .stSelectbox>div>div>div>div[disabled],
+    .stSlider>div>div>div>div[disabled],
+    .stFileUploader>div>div>div>div[disabled] {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 
 # === HEADER WITH IMAGE AND DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
@@ -306,6 +339,34 @@ TEMP_MODEL_DIR = "downloaded_models"
 
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
+
+# Dictionary with model information
+MODEL_INFO = {
+    "CH3OH_model.keras": {
+        "name": "Methanol (CH3OH)",
+        "catalog": "CDMS",
+        "freq_range": "80 - 300 GHz",
+        "logn_range": "12.0 - 19.1 cm⁻²",
+        "tex_range": "20 - 380 K",
+        "image": "ch3oh_spectrum.jpg"
+    },
+    "H2CO_model.keras": {
+        "name": "Formaldehyde (H2CO)",
+        "catalog": "JPL",
+        "freq_range": "90 - 350 GHz",
+        "logn_range": "11.5 - 18.8 cm⁻²",
+        "tex_range": "15 - 400 K",
+        "image": "h2co_spectrum.jpg"
+    },
+    "HCN_model.keras": {
+        "name": "Hydrogen Cyanide (HCN)",
+        "catalog": "CDMS",
+        "freq_range": "85 - 320 GHz",
+        "logn_range": "12.2 - 19.0 cm⁻²",
+        "tex_range": "25 - 350 K",
+        "image": "hcn_spectrum.jpg"
+    }
+}
 
 @st.cache_data(ttl=3600, show_spinner=True)
 def download_models_from_drive(folder_url, output_dir):
@@ -422,7 +483,7 @@ sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, ke
 window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1)
 sigma_threshold = st.sidebar.slider("Sigma Threshold", 0.1, 5.0, 2.0, step=0.1, key="sigma_threshold_slider")
 fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01)
-tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 1.0, 0.1, step=0.01)
+tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 0.5, 0.1, step=0.01)
 min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05)
 top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5)
 top_n_similar = st.sidebar.slider("Top N Similar", 50, 2000, 800, step=50)
@@ -647,12 +708,50 @@ with tab_molecular:
         if not model_files:
             st.error("No trained models were found in Google Drive.")
         else:
-            selected_model = st.selectbox("Select Molecule Model", model_files)
+            # Create columns for model selection and info panel
+            col_select, col_info = st.columns([0.6, 0.4])
             
-            analyze_btn = st.button("Analyze Spectrum")
+            with col_select:
+                selected_model = st.selectbox("Select Molecule Model", model_files)
+            
+            with col_info:
+                # Display model information panel
+                if selected_model in MODEL_INFO:
+                    model_data = MODEL_INFO[selected_model]
+                    st.markdown(f"""
+                    <div class="model-info-panel">
+                        <h4>Model Information</h4>
+                        <p><strong>Molecule:</strong> {model_data['name']}</p>
+                        <p><strong>Catalog:</strong> {model_data['catalog']}</p>
+                        <p><strong>Frequency Range:</strong> {model_data['freq_range']}</p>
+                        <p><strong>LogN Range:</strong> {model_data['logn_range']}</p>
+                        <p><strong>Tex Range:</strong> {model_data['tex_range']}</p>
+                        <img src="{model_data['image']}" alt="Model Spectrum">
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="model-info-panel">
+                        <h4>Model Information</h4>
+                        <p>No information available for this model</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Create a container for the analyze button to control its state
+            analyze_container = st.container()
+            
+            with analyze_container:
+                analyze_btn = st.button("Analyze Spectrum", key="analyze_btn")
 
             if analyze_btn:
                 try:
+                    # Disable all interactive elements during processing
+                    st.session_state.processing = True
+                    
+                    # Update the button to show processing state
+                    with analyze_container:
+                        st.button("Analyzing... Please wait", disabled=True)
+                    
                     # Configurar la barra de progreso para el análisis
                     progress_text = st.empty()
                     progress_bar = st.progress(0)
@@ -750,10 +849,19 @@ with tab_molecular:
                         st.session_state['input_spec'] = results['input_spec']
 
                     os.unlink(tmp_path)
+                    
+                    # Re-enable interactive elements after processing
+                    st.session_state.processing = False
+                    st.rerun()
+                    
                 except Exception as e:
                     st.error(f"Error during analysis: {e}")
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
+                    
+                    # Re-enable interactive elements if there was an error
+                    st.session_state.processing = False
+                    st.rerun()
 
             # Mostrar pestañas si el análisis está completo
             if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
@@ -1062,3 +1170,17 @@ def cached_analyze_spectrum(tmp_path, model, train_data, train_freq, filenames, 
         filenames, headers, train_logn, train_tex,
         config, mol_name
     )
+
+# === DISABLE INTERACTIVE ELEMENTS DURING PROCESSING ===
+if 'processing' in st.session_state and st.session_state.processing:
+    st.markdown("""
+    <style>
+        .stButton>button,
+        .stSelectbox>div,
+        .stSlider>div,
+        .stFileUploader>div {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+    """, unsafe_allow_html=True)
