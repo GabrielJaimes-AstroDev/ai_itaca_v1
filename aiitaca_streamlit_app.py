@@ -669,35 +669,59 @@ with tab_molecular:
                 <tbody>
                     <tr>
                         <td>CO</td>
-                        <td>120 - 380</td>
+                        <td>20 - 380</td>
                         <td>5</td>
                         <td>12 - 19.2</td>
                         <td>0.1</td>
-                        <td>20 - 380</td>
+                        <td>80 - 300</td>
                     </tr>
                     <tr>
                         <td>SiO</td>
-                        <td>120 - 380</td>
+                        <td>20 - 380</td>
                         <td>5</td>
                         <td>12 - 19.2</td>
                         <td>0.1</td>
-                        <td>20 - 380</td>
+                        <td>80 - 300</td>
                     </tr>
                     <tr>
                         <td>HCO⁺ v=0,1,2</td>
-                        <td>120 - 380</td>
+                        <td>20 - 380</td>
                         <td>5</td>
                         <td>12 - 19.2</td>
                         <td>0.1</td>
-                        <td>20 - 380</td>
+                        <td>80 - 300</td>
                     </tr>
                     <tr>
                         <td>CH3CN</td>
-                        <td>120 - 380</td>
+                        <td>20 - 380</td>
                         <td>5</td>
                         <td>12 - 19.2</td>
                         <td>0.1</td>
+                        <td>80 - 300</td>
+                    </tr>
+                    <tr>
+                        <td>HNC</td>
                         <td>20 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>80 - 300</td>
+                    </tr>
+                    <tr>
+                        <td>SO</td>
+                        <td>20 - 380</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>80 - 300</td>
+                    </tr>
+                    <tr>
+                        <td>CH3OCHO_Yebes</td>
+                        <td>20 - 350</td>
+                        <td>5</td>
+                        <td>12 - 19.2</td>
+                        <td>0.1</td>
+                        <td>20 - 50</td>
                     </tr>
                     <tr>
                         <td>CH3OCHO</td>
@@ -705,7 +729,7 @@ with tab_molecular:
                         <td>5</td>
                         <td>12 - 19.2</td>
                         <td>0.1</td>
-                        <td>20 - 380</td>
+                        <td>80 - 300</td>
                     </tr>
                 </tbody>
             </table>
