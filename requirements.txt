@@ -8,3 +8,4 @@ gdown
 scipy
 tqdm
 astropy
+firebase-admin
