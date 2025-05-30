@@ -328,18 +328,12 @@ with tab_molecular:
             """, unsafe_allow_html=True)
     if flow_tab:
         with st.container():
-            st.markdown(FLOW_OF_WORK["html"].split('<div id="workflow-image-container"')[0], 
-                       unsafe_allow_html=True)
-            
-            st.image(
-                FLOW_OF_WORK["image_path"],
-                use_container_width=True,
-                caption=FLOW_OF_WORK.get("image_caption", ""),
-                width=None
+            # Reemplazar el marcador de posición antes de renderizar
+            complete_html = FLOW_OF_WORK["html"].replace(
+                '<div id="workflow-image-container"></div>',
+                f'<img src="{FLOW_OF_WORK["image_path"]}" style="max-width:100%; border-radius:8px; margin:10px 0;">'
             )
-            
-            st.markdown(FLOW_OF_WORK["html"].split('</div>', 3)[-1], 
-                       unsafe_allow_html=True)
+            st.markdown(complete_html, unsafe_allow_html=True)
     
     if Acknowledgments_tab:  # ← Así aparece en tu código original
         with st.container():
