@@ -330,10 +330,12 @@ with tab_molecular:
     if flow_tab:
         with st.container():
             st.markdown(FLOW_OF_WORK, unsafe_allow_html=True)
-
+            st.image("Flow_of_Work.jpg", caption="Workflow Diagram", use_column_width=True)
+    
     if Acknowledgments_tab:
         with st.container():
             st.markdown(ACKNOWLEDGMENTS, unsafe_allow_html=True)
+            st.image("Acknowledgments.png", caption="Funding Acknowledgments", use_column_width=True)
 
     # Procesamiento de archivo subido
     if current_uploaded_file is not None:
