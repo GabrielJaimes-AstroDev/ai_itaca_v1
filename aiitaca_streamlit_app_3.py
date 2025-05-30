@@ -7,11 +7,13 @@ import tempfile
 import plotly.graph_objects as go
 import plotly.express as px
 import tensorflow as tf
-import gdown
 import shutil
 import time
 from astropy.io import fits
 import warnings
+import firebase_admin
+from firebase_admin import credentials, storage
+import json
 warnings.filterwarnings('ignore')
 
 st.set_page_config(
@@ -305,6 +307,27 @@ def disable_widgets():
     processing = st.session_state.get('processing', False)
     return processing
 
+# === FIREBASE INITIALIZATION ===
+def initialize_firebase():
+    """Initialize Firebase Admin SDK with credentials from Streamlit secrets"""
+    if not firebase_admin._apps:
+        try:
+            # Load Firebase credentials from Streamlit secrets
+            firebase_config = json.loads(st.secrets["FIREBASE_ADMIN_SDK_JSON"])
+            cred = credentials.Certificate(firebase_config)
+            
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': st.secrets.firebase.bucket_name
+            })
+            return True
+        except Exception as e:
+            st.error(f"Firebase initialization error: {str(e)}")
+            return False
+    return True
+
+# Initialize Firebase
+firebase_initialized = initialize_firebase()
+
 # === HEADER WITH IMAGE AND DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
 
@@ -339,67 +362,81 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 """, unsafe_allow_html=True)
 
 # === CONFIGURATION ===
-GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1J9AZ2K6NEwobQWwTNbTaR56BnYmRMaC9?usp=drive_link"
 TEMP_MODEL_DIR = "downloaded_models"
-
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
 @st.cache_data(ttl=3600, show_spinner=True)
-def download_models_from_drive(folder_url, output_dir):
-    model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-    data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-
-    if model_files and data_files:
-        return model_files, data_files, True
-
+def download_models_from_firebase(output_dir):
+    """Download models and data files from Firebase Storage"""
     try:
         st.session_state['processing'] = True
         progress_text = st.sidebar.empty()
         progress_bar = st.sidebar.progress(0)
-        progress_text.text("📥 Preparing to download models...")
         
-        file_count = 0
-        try:
-            file_count = 10  # Valor estimado para la simulación
-        except:
-            file_count = 10  # Valor por defecto si no podemos obtener el conteo real
+        # Get bucket reference
+        bucket = storage.bucket()
+        
+        # List all files in the models directory
+        blobs = bucket.list_blobs(prefix=" 1.MODELS")
+        files_to_download = [blob.name for blob in blobs if '.' in blob.name]
+        
+        if not files_to_download:
+            st.sidebar.error("❌ No files found in Firebase Storage models directory")
+            return [], [], False
+        
+        progress_text.text("📥 Preparing to download models from Firebase...")
+        progress_bar.progress(0)
+        
+        downloaded_files = []
+        
+        # Download each file
+        for i, blob_name in enumerate(files_to_download):
+            blob = bucket.blob(blob_name)
+            filename = os.path.basename(blob_name)
+            local_path = os.path.join(output_dir, filename)
             
-        with st.spinner("📥 Downloading models from Google Drive..."):
-            gdown.download_folder(
-                folder_url, 
-                output=output_dir, 
-                quiet=True,  # Silenciamos la salida por consola
-                use_cookies=False
-            )
-            for i in range(file_count):
-                time.sleep(0.5)  # Pequeña pausa para simular descarga
-                progress = int((i + 1) / file_count * 100)
-                progress_bar.progress(progress)
-                progress_text.text(f"📥 Downloading models... {progress}%")
+            # Update progress
+            progress = int((i + 1) / len(files_to_download) * 100)
+            progress_bar.progress(progress)
+            progress_text.text(f"📥 Downloading {filename}... ({progress}%)")
+            
+            # Download file
+            try:
+                blob.download_to_filename(local_path)
+                downloaded_files.append(local_path)
+            except Exception as e:
+                st.sidebar.warning(f"⚠️ Failed to download {filename}: {str(e)}")
         
-        model_files = [f for f in os.listdir(output_dir) if f.endswith('.keras')]
-        data_files = [f for f in os.listdir(output_dir) if f.endswith('.npz')]
-        
-        progress_bar.progress(100)
-        progress_text.text("Process Completed")
+        # Filter downloaded files
+        model_files = [f for f in downloaded_files if f.endswith('.keras')]
+        data_files = [f for f in downloaded_files if f.endswith('.npz')]
         
         if model_files and data_files:
-            st.sidebar.success("✅ Models downloaded successfully!")
+            progress_text.text("✅ Download completed!")
+            time.sleep(1)
+            return [os.path.basename(f) for f in model_files], [os.path.basename(f) for f in data_files], True
         else:
-            st.sidebar.error("❌ No models found in the specified folder")
+            progress_text.text("❌ Download incomplete - missing model or data files")
+            return [], [], False
             
-        return model_files, data_files, True
     except Exception as e:
-        st.sidebar.error(f"❌ Error downloading models: {str(e)}")
+        st.sidebar.error(f"🔥 Error downloading from Firebase: {str(e)}")
         return [], [], False
     finally:
         st.session_state['processing'] = False
+        progress_bar.empty()
+        progress_text.empty()
 
 # === SIDEBAR ===
 st.sidebar.title("Configuration")
 
-model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
+# Only attempt to download models if Firebase is initialized
+if firebase_initialized:
+    model_files, data_files, models_downloaded = download_models_from_firebase(TEMP_MODEL_DIR)
+else:
+    model_files, data_files, models_downloaded = [], [], False
+    st.sidebar.error("Firebase not initialized - cannot download models")
 
 # Clear previous analysis when new file is uploaded
 if 'prev_uploaded_file' not in st.session_state:
@@ -767,7 +804,7 @@ with tab_molecular:
             tmp_path = tmp_file.name
 
         if not model_files:
-            st.error("No trained models were found in Google Drive.")
+            st.error("No trained models were found in Firebase Storage.")
         else:
             selected_model = st.selectbox(
                 "Select Molecule Model", 
