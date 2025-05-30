@@ -327,27 +327,33 @@ with tab_molecular:
             </div>
             """, unsafe_allow_html=True)
     if flow_tab:
-        # 1. Mostrar HTML con el título
-        st.markdown(FLOW_OF_WORK["html"].format(title=FLOW_OF_WORK["title"]), 
-                   unsafe_allow_html=True)
-        
-        # 2. Mostrar imagen JUSTO DESPUÉS del título
-        st.image(FLOW_OF_WORK["image_path"],
-                 use_column_width=True,
-                 output_format="JPEG",
-                 caption="",
-                 width=None,  # Ancho automático
-                 style=FLOW_OF_WORK["image_style"])
+        with st.container():
+            st.markdown(FLOW_OF_WORK["html"].split('<div id="workflow-image-container"')[0], 
+                       unsafe_allow_html=True)
+            
+            st.image(
+                FLOW_OF_WORK["image_path"],
+                use_column_width=True,
+                caption=FLOW_OF_WORK.get("image_caption", ""),
+                width=None
+            )
+            
+            st.markdown(FLOW_OF_WORK["html"].split('</div>', 3)[-1], 
+                       unsafe_allow_html=True)
     
-    
-    if acknowledgments_tab:
-        st.markdown(ACKNOWLEDGMENTS["html"].format(title=ACKNOWLEDGMENTS["title"]), 
-                   unsafe_allow_html=True)
-        st.image(ACKNOWLEDGMENTS["image_path"],
-                 use_column_width=True,
-                 output_format="PNG",
-                 caption="",
-                 style=ACKNOWLEDGMENTS["image_style"])
+    if Acknowledgments_tab:  # ← Así aparece en tu código original
+        with st.container():
+            st.markdown(ACKNOWLEDGMENTS["html"].split('<div id="acknowledgments-image-container"')[0], 
+                       unsafe_allow_html=True)
+            
+            st.image(
+                ACKNOWLEDGMENTS["image_path"],
+                use_column_width=True,
+                caption=ACKNOWLEDGMENTS.get("image_caption", "")
+            )
+            
+            st.markdown(ACKNOWLEDGMENTS["html"].split('</div>', 3)[-1], 
+                       unsafe_allow_html=True)
 
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
