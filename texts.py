@@ -72,9 +72,10 @@ SUBTITLE = "Molecular Spectrum Analyzer"
 FLOW_OF_WORK = """
 <div class="info-panel">
 <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-<!-- Contenedor para la imagen (se insertará desde Streamlit) -->
-<div id="workflow-image" style="margin: 15px 0; border-radius: 8px; background-color: #f8f9fa; padding: 10px; text-align: center;">
-[Workflow Diagram will be displayed here]
+<img src="data:image/jpg;base64,{image_to_base64('Flow_of_Work.jpg')}" 
+style="max-width: 100%; border-radius: 8px; margin: 15px 0;"
+alt="Workflow Diagram">
+<!-- Resto del contenido... -->
 </div>
     
 <div style="margin-top: 20px;">
