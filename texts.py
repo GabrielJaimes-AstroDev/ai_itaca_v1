@@ -67,7 +67,7 @@ TRAINING_DATASET = """
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
 SUBTITLE = "Molecular Spectrum Analyzer"
 
-FLOW_OF_WORK_CONTENT = """
+FLOW_OF_WORK = """
 <div style="margin-top: 20px;">
 <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
 <ol style="color: black; padding-left: 20px;">
@@ -85,7 +85,7 @@ FLOW_OF_WORK_CONTENT = """
 </div>
 """
 
-ACKNOWLEDGMENTS_CONTENT = """
+ACKNOWLEDGMENTS = """
 <div class="description-panel" style="text-align: justify; padding: 0 15px;">
 <p>"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."</p>
 </div>
