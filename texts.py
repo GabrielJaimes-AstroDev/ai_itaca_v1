@@ -108,7 +108,7 @@ ACKNOWLEDGMENTS = """
 within the framework of the Spanish Government's public business entity Red.es talent attraction programmes 
 (Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan)."
 </div>
-</div>
+"""
 
 # Cube Visualizer description
 CUBE_VISUALIZER_DESCRIPTION = """
