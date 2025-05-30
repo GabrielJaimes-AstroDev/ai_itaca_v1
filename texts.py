@@ -51,14 +51,14 @@ PARAMS_EXPLANATION = """
 TRAINING_DATASET = """
 <table class="training-table">
 <thead>
-                    <tr>
+<tr>
                         <th>Molécule</th>
                         <th>Tex Range (K)</th>
                         <th>Tex Step</th>
                         <th>LogN Range (cm⁻²)</th>
                         <th>LogN Step</th>
                         <th>Frequency Range (GHz)</th>
-                    </tr>
+</tr>
 """
 
 # Main titles
