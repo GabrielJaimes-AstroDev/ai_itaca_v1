@@ -67,124 +67,30 @@ TRAINING_DATASET = """
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
 SUBTITLE = "Molecular Spectrum Analyzer"
 
-# texts.py - Fragmento con FLOW_OF_WORK y ACKNOWLEDGMENTS
+FLOW_OF_WORK_CONTENT = """
+<div style="margin-top: 20px;">
+<h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
+<ol style="color: black; padding-left: 20px;">
+<li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
+<li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
+<li><strong>Peak Detection:</strong> Identify significant spectral features</li>
+<li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
+<li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
+<li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
+</ol>
+</div>
 
-# texts.py - Versión optimizada con imágenes después del título
+<div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
+<p style="margin: 0; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+</div>
+"""
 
-FLOW_OF_WORK = {
-    "title": "Flow of Work Diagram",
-    "html": """
-    <div class="info-panel" style="
-        font-family: 'Arial', sans-serif;
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 20px;
-    ">
-        <!-- Título centrado -->
-        <h3 style="
-            text-align: center;
-            color: #1E88E5;
-            margin-bottom: 5px;
-            border-bottom: 2px solid #1E88E5;
-            padding-bottom: 10px;
-        ">{title}</h3>
-        
-        <!-- Espacio para imagen (se insertará después) -->
-        <div id="workflow-image-container" style="
-            margin: 10px 0 20px 0;
-            text-align: center;
-        "></div>
-        
-        <!-- Contenido descriptivo -->
-        <div style="margin-top: 15px;">
-            <h4 style="
-                color: #1E88E5; 
-                text-align: center;
-                margin-bottom: 15px;
-            ">Analysis Pipeline</h4>
-            
-            <ol style="
-                padding-left: 25px;
-                color: #333;
-                line-height: 1.6;
-            ">
-                <li style="margin-bottom: 10px;"><strong>Spectrum Input:</strong> Upload your observational data file</li>
-                <li style="margin-bottom: 10px;"><strong>Pre-processing:</strong> Automatic noise reduction</li>
-                <li style="margin-bottom: 10px;"><strong>Peak Detection:</strong> Identify molecular signatures</li>
-                <li style="margin-bottom: 10px;"><strong>Model Matching:</strong> Compare with chemical database</li>
-                <li style="margin-bottom: 10px;"><strong>Parameter Estimation:</strong> Calculate physical conditions</li>
-                <li><strong>Visualization:</strong> Interactive results exploration</li>
-            </ol>
-        </div>
-        
-        <div style="
-            margin-top: 20px;
-            padding: 12px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            border-left: 4px solid #1E88E5;
-        ">
-            <p style="margin: 0; font-size: 0.95em;">
-                <strong>Processing Time:</strong> Typically completes in 30-90 seconds depending on spectrum complexity.
-            </p>
-        </div>
-    </div>
-    """,
-    "image_path": "images/Flow_of_Work.jpg",
-    "image_style": """
-        max-width: 100%;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin: 0 auto;
-    """
-}
+ACKNOWLEDGMENTS_CONTENT = """
+<div class="description-panel" style="text-align: justify; padding: 0 15px;">
+<p>"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."</p>
+</div>
+"""
 
-ACKNOWLEDGMENTS = {
-    "title": "Project Acknowledgments",
-    "html": """
-    <div class="info-panel" style="
-        font-family: 'Arial', sans-serif;
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 20px;
-    ">
-        <!-- Título centrado -->
-        <h3 style="
-            text-align: center;
-            color: #1E88E5;
-            margin-bottom: 5px;
-            border-bottom: 2px solid #1E88E5;
-            padding-bottom: 10px;
-        ">{title}</h3>
-        
-        <!-- Espacio para imagen (se insertará después) -->
-        <div id="acknowledgments-image-container" style="
-            margin: 10px 0 20px 0;
-            text-align: center;
-        "></div>
-        
-        <!-- Texto de agradecimientos -->
-        <div style="
-            text-align: justify;
-            padding: 0 10px;
-            line-height: 1.6;
-        ">
-            <p>This research is supported by the European Union's <strong>Recovery and Resilience Facility-Next Generation EU</strong>, 
-            through the Spanish Government's public business entity Red.es, under the talent attraction and retention program 
-            (Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan).</p>
-            
-            <p style="margin-top: 10px;">The development of AI-ITACA represents a collaborative effort between astrophysicists, 
-            data scientists, and astrochemistry experts to advance our understanding of interstellar chemistry.</p>
-        </div>
-    </div>
-    """,
-    "image_path": "images/Acknowledgments.png",
-    "image_style": """
-        max-width: 80%;
-        border-radius: 8px;
-        margin: 0 auto;
-    """
-}
 # Cube Visualizer description
 CUBE_VISUALIZER_DESCRIPTION = """
 <div class="description-panel">
