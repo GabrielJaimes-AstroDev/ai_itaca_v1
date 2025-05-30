@@ -328,26 +328,26 @@ with tab_molecular:
             """, unsafe_allow_html=True)
     if flow_tab:
         with st.container():
-            # Reemplazar el marcador de posición antes de renderizar
-            complete_html = FLOW_OF_WORK["html"].replace(
-                '<div id="workflow-image-container"></div>',
-                f'<img src="{FLOW_OF_WORK["image_path"]}" style="max-width:100%; border-radius:8px; margin:10px 0;">'
-            )
-            st.markdown(complete_html, unsafe_allow_html=True)
+            st.markdown('<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>', 
+                       unsafe_allow_html=True)
+            
+            st.image("Flow_of_Work.jpg", 
+                    use_column_width=True,
+                    caption="Workflow Diagram")
+            
+            st.markdown(FLOW_OF_WORK_CONTENT, unsafe_allow_html=True)
     
-    if Acknowledgments_tab:  # ← Así aparece en tu código original
+    # Acknowledgments
+    if Acknowledgments_tab:
         with st.container():
-            st.markdown(ACKNOWLEDGMENTS["html"].split('<div id="acknowledgments-image-container"')[0], 
+            st.markdown('<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>', 
                        unsafe_allow_html=True)
             
-            st.image(
-                ACKNOWLEDGMENTS["image_path"],
-                use_container_width=True,
-                caption=ACKNOWLEDGMENTS.get("image_caption", "")
-            )
+            st.image("Acknowledgments.png", 
+                    use_column_width=True,
+                    caption="Funding Acknowledgments")
             
-            st.markdown(ACKNOWLEDGMENTS["html"].split('</div>', 3)[-1], 
-                       unsafe_allow_html=True)
+            st.markdown(ACKNOWLEDGMENTS_CONTENT, unsafe_allow_html=True)
 
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
