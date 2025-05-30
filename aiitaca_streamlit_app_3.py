@@ -326,24 +326,29 @@ with tab_molecular:
                 <p><strong>Note:</strong> The training dataset was generated using LTE radiative transfer models under typical ISM conditions.</p>
             </div>
             """, unsafe_allow_html=True)
-
-
     if flow_tab:
-        # Primero el HTML
-        st.markdown(FLOW_OF_WORK["html"], unsafe_allow_html=True)
+        # 1. Mostrar HTML con el título
+        st.markdown(FLOW_OF_WORK["html"].format(title=FLOW_OF_WORK["title"]), 
+                   unsafe_allow_html=True)
         
-        # Luego la imagen en el mismo contenedor
-        with st.container():
-            st.image(FLOW_OF_WORK["image_path"], 
-                    use_column_width=True,
-                    caption="Workflow Diagram")
+        # 2. Mostrar imagen JUSTO DESPUÉS del título
+        st.image(FLOW_OF_WORK["image_path"],
+                 use_column_width=True,
+                 output_format="JPEG",
+                 caption="",
+                 width=None,  # Ancho automático
+                 style=FLOW_OF_WORK["image_style"])
     
-    if Acknowledgments_tab:
-        with st.container():
-            st.markdown(ACKNOWLEDGMENTS, unsafe_allow_html=True)
-            st.image("Acknowledgments.png", caption="Funding Acknowledgments", use_container_width=True)
+    
+    if acknowledgments_tab:
+        st.markdown(ACKNOWLEDGMENTS["html"].format(title=ACKNOWLEDGMENTS["title"]), 
+                   unsafe_allow_html=True)
+        st.image(ACKNOWLEDGMENTS["image_path"],
+                 use_column_width=True,
+                 output_format="PNG",
+                 caption="",
+                 style=ACKNOWLEDGMENTS["image_style"])
 
-    # Procesamiento de archivo subido
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
             tmp_file.write(current_uploaded_file.getvalue())
