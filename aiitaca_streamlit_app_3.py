@@ -14,6 +14,12 @@ import warnings
 import firebase_admin
 from firebase_admin import credentials, storage
 import json
+
+# Convert secrets dict to JSON string, then to dict again for firebase_admin
+cred = credentials.Certificate(json.loads(json.dumps(st.secrets["FIREBASE_ADMIN_SDK_JSON"])))
+firebase_admin.initialize_app(cred)
+
+
 warnings.filterwarnings('ignore')
 
 st.set_page_config(
