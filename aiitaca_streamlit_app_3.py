@@ -332,10 +332,10 @@ with tab_molecular:
                        unsafe_allow_html=True)
             
             st.image("Flow_of_Work.jpg", 
-                    use_column_width=True,
+                    use_container_width=True,
                     caption="Workflow Diagram")
             
-            st.markdown(FLOW_OF_WORK_CONTENT, unsafe_allow_html=True)
+            st.markdown(FLOW_OF_WORK, unsafe_allow_html=True)
     
     # Acknowledgments
     if Acknowledgments_tab:
@@ -344,10 +344,10 @@ with tab_molecular:
                        unsafe_allow_html=True)
             
             st.image("Acknowledgments.png", 
-                    use_column_width=True,
+                    use_container_width=True,
                     caption="Funding Acknowledgments")
             
-            st.markdown(ACKNOWLEDGMENTS_CONTENT, unsafe_allow_html=True)
+            st.markdown(ACKNOWLEDGMENTS, unsafe_allow_html=True)
 
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
