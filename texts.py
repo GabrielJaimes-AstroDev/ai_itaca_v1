@@ -69,34 +69,122 @@ SUBTITLE = "Molecular Spectrum Analyzer"
 
 # texts.py - Fragmento con FLOW_OF_WORK y ACKNOWLEDGMENTS
 
+# texts.py - Versión optimizada con imágenes después del título
+
 FLOW_OF_WORK = {
+    "title": "Flow of Work Diagram",
     "html": """
-    <div class="info-panel">
-        <h3 style="...">Flow of Work Diagram</h3>
-        <!-- El marcador de posición -->
-        <div id="workflow-image" style="margin: 15px 0; text-align: center;"></div>
-        <!-- Resto del contenido HTML -->
+    <div class="info-panel" style="
+        font-family: 'Arial', sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    ">
+        <!-- Título centrado -->
+        <h3 style="
+            text-align: center;
+            color: #1E88E5;
+            margin-bottom: 5px;
+            border-bottom: 2px solid #1E88E5;
+            padding-bottom: 10px;
+        ">{title}</h3>
+        
+        <!-- Espacio para imagen (se insertará después) -->
+        <div id="workflow-image-container" style="
+            margin: 10px 0 20px 0;
+            text-align: center;
+        "></div>
+        
+        <!-- Contenido descriptivo -->
+        <div style="margin-top: 15px;">
+            <h4 style="
+                color: #1E88E5; 
+                text-align: center;
+                margin-bottom: 15px;
+            ">Analysis Pipeline</h4>
+            
+            <ol style="
+                padding-left: 25px;
+                color: #333;
+                line-height: 1.6;
+            ">
+                <li style="margin-bottom: 10px;"><strong>Spectrum Input:</strong> Upload your observational data file</li>
+                <li style="margin-bottom: 10px;"><strong>Pre-processing:</strong> Automatic noise reduction</li>
+                <li style="margin-bottom: 10px;"><strong>Peak Detection:</strong> Identify molecular signatures</li>
+                <li style="margin-bottom: 10px;"><strong>Model Matching:</strong> Compare with chemical database</li>
+                <li style="margin-bottom: 10px;"><strong>Parameter Estimation:</strong> Calculate physical conditions</li>
+                <li><strong>Visualization:</strong> Interactive results exploration</li>
+            </ol>
+        </div>
+        
+        <div style="
+            margin-top: 20px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #1E88E5;
+        ">
+            <p style="margin: 0; font-size: 0.95em;">
+                <strong>Processing Time:</strong> Typically completes in 30-90 seconds depending on spectrum complexity.
+            </p>
+        </div>
     </div>
     """,
-    "image_path": "Flow_of_Work.jpg"
+    "image_path": "images/Flow_of_Work.jpg",
+    "image_style": """
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 0 auto;
+    """
 }
 
-
-ACKNOWLEDGMENTS = """
-<div class="info-panel">
-<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
-<!-- Contenedor para la imagen (se insertará desde Streamlit) -->
-<div id="ack-image" style="margin: 15px 0; border-radius: 8px; background-color: #f8f9fa; padding: 10px; text-align: center;">
-[Funding acknowledgments image will be displayed here]
-</div>
-    
-<div class="description-panel" style="text-align: justify; padding: 0 10px;">
-"The funding for these actions comes from the European Union's Recovery and Resilience Facility-Next Generation, 
-within the framework of the Spanish Government's public business entity Red.es talent attraction programmes 
-(Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan)."
-</div>
-"""
-
+ACKNOWLEDGMENTS = {
+    "title": "Project Acknowledgments",
+    "html": """
+    <div class="info-panel" style="
+        font-family: 'Arial', sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    ">
+        <!-- Título centrado -->
+        <h3 style="
+            text-align: center;
+            color: #1E88E5;
+            margin-bottom: 5px;
+            border-bottom: 2px solid #1E88E5;
+            padding-bottom: 10px;
+        ">{title}</h3>
+        
+        <!-- Espacio para imagen (se insertará después) -->
+        <div id="acknowledgments-image-container" style="
+            margin: 10px 0 20px 0;
+            text-align: center;
+        "></div>
+        
+        <!-- Texto de agradecimientos -->
+        <div style="
+            text-align: justify;
+            padding: 0 10px;
+            line-height: 1.6;
+        ">
+            <p>This research is supported by the European Union's <strong>Recovery and Resilience Facility-Next Generation EU</strong>, 
+            through the Spanish Government's public business entity Red.es, under the talent attraction and retention program 
+            (Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan).</p>
+            
+            <p style="margin-top: 10px;">The development of AI-ITACA represents a collaborative effort between astrophysicists, 
+            data scientists, and astrochemistry experts to advance our understanding of interstellar chemistry.</p>
+        </div>
+    </div>
+    """,
+    "image_path": "images/Acknowledgments.png",
+    "image_style": """
+        max-width: 80%;
+        border-radius: 8px;
+        margin: 0 auto;
+    """
+}
 # Cube Visualizer description
 CUBE_VISUALIZER_DESCRIPTION = """
 <div class="description-panel">
