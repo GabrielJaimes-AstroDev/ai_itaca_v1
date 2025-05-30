@@ -36,7 +36,7 @@ DEFAULT_CONFIG = {
         'top_n_similar': 800
     }
 }
-
+@st.cache
 def sanitize_spectrum(freq, spec):
     """Elimina valores no finitos y normaliza el espectro"""
     valid = np.isfinite(freq) & np.isfinite(spec) & (spec != 0)
