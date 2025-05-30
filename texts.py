@@ -69,32 +69,18 @@ SUBTITLE = "Molecular Spectrum Analyzer"
 
 # texts.py - Fragmento con FLOW_OF_WORK y ACKNOWLEDGMENTS
 
-FLOW_OF_WORK = """
-<div class="info-panel">
-<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-<img src="data:image/jpg;base64,{image_to_base64('Flow_of_Work.jpg')}" 
-style="max-width: 100%; border-radius: 8px; margin: 15px 0;"
-alt="Workflow Diagram">
-<!-- Resto del contenido... -->
-</div>
-    
-<div style="margin-top: 20px;">
-<h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-<ol style="color: black; padding-left: 20px;">
-<li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
-<li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
-<li><strong>Peak Detection:</strong> Identify significant spectral features</li>
-<li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
-<li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
-<li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
-</ol>
-</div>
-    
-<div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-<p style="margin: 0; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity.</p>
-</div>
-</div>
-"""
+FLOW_OF_WORK = {
+    "html": """
+    <div class="info-panel">
+        <h3 style="...">Flow of Work Diagram</h3>
+        <!-- El marcador de posición -->
+        <div id="workflow-image" style="margin: 15px 0; text-align: center;"></div>
+        <!-- Resto del contenido HTML -->
+    </div>
+    """,
+    "image_path": "Flow_of_Work.jpg"
+}
+
 
 ACKNOWLEDGMENTS = """
 <div class="info-panel">
