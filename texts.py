@@ -127,7 +127,7 @@ TRAINING_DATASET = """
 </tr>
 </tbody>
 </table>
-
+"""
 
 # Main titles
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
