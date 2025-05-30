@@ -49,16 +49,16 @@ PARAMS_EXPLANATION = """
 """
 
 TRAINING_DATASET = """
-<table class="training-table">
-<thead>
-<tr>
-<th>Molécule</th>
-<th>Tex Range (K)</th>
-<th>Tex Step</th>
-<th>LogN Range (cm⁻²)</th>
-<th>LogN Step</th>
-<th>Frequency Range (GHz)</th>
-</tr>
+| Molécule        | Tex Range (K) | Tex Step | LogN Range (cm⁻²) | LogN Step | Frequency Range (GHz) |
+|-----------------|---------------|----------|-------------------|-----------|-----------------------|
+| CO              | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| SiO             | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| HCO⁺ v=0,1,2    | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| CH3CN           | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| HNC             | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| SO              | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+| CH3OCHO_Yebes   | 20 - 350      | 5        | 12 - 19.2         | 0.1       | 20 - 50               |
+| CH3OCHO         | 120 - 380     | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
 """
 
 # Main titles
@@ -68,55 +68,55 @@ SUBTITLE = "Molecular Spectrum Analyzer"
 # Flow of Work content
 FLOW_OF_WORK = """
 <div class="info-panel">
-    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
-    <img src="Flow_of_Work.jpg" alt="Workflow Diagram" style="max-width: 100%; border-radius: 8px; margin: 15px 0;">
+<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>
+<img src="Flow_of_Work.jpg" alt="Workflow Diagram" style="max-width: 100%; border-radius: 8px; margin: 15px 0;">
     
-    <div style="margin-top: 20px;">
-    <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-    <ol style="color: black; padding-left: 20px;">
-        <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
-        <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
-        <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
-        <li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
-        <li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
-        <li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
-    </ol>
-    </div>
+<div style="margin-top: 20px;">
+<h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
+<ol style="color: black; padding-left: 20px;">
+<li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
+<li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
+<li><strong>Peak Detection:</strong> Identify significant spectral features</li>
+<li><strong>Model Matching:</strong> Compare with synthetic spectra database</li>
+<li><strong>Parameter Estimation:</strong> Determine physical conditions (T<sub>ex</sub>, logN)</li>
+<li><strong>Visualization:</strong> Interactive comparison of observed vs synthetic spectra</li>
+</ol>
+</div>
     
-    <div class="pro-tip">
-        <p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
-    </div>
+<div class="pro-tip">
+<p><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+</div>
 </div>
 """
 
 # Acknowledgments content
 ACKNOWLEDGMENTS = """
 <div class="info-panel">
-    <h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
-    <img src="Acknowledgments.png" alt="Funding Acknowledgments" style="max-width: 100%; border-radius: 8px; margin: 15px 0;">
+<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>
+<img src="Acknowledgments.png" alt="Funding Acknowledgments" style="max-width: 100%; border-radius: 8px; margin: 15px 0;">
     
-    <div class="description-panel" style="text-align: justify;">
-        "The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."
-    </div>
+<div class="description-panel" style="text-align: justify;">
+"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."
+</div>
 </div>
 """
 
 # Cube Visualizer description
 CUBE_VISUALIZER_DESCRIPTION = """
 <div class="description-panel">
-    <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">3D Spectral Cube Visualization</h3>
-    <p>Upload and visualize ALMA spectral cubes (FITS format) up to 2GB in size. Explore different channels and create integrated intensity maps with these features:</p>
+<h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">3D Spectral Cube Visualization</h3>
+<p>Upload and visualize ALMA spectral cubes (FITS format) up to 2GB in size. Explore different channels and create integrated intensity maps with these features:</p>
     
-    <ul style="color: black;">
-        <li><strong>Interactive Channel Navigation:</strong> Scroll through spectral dimensions</li>
-        <li><strong>Region Selection:</strong> Extract spectra from specific spatial regions</li>
-        <li><strong>Dynamic Scaling:</strong> Linear, logarithmic, or square root intensity scaling</li>
-        <li><strong>Frequency Information:</strong> Automatic detection of spectral axis</li>
-    </ul>
+<ul style="color: black;">
+<li><strong>Interactive Channel Navigation:</strong> Scroll through spectral dimensions</li>
+<li><strong>Region Selection:</strong> Extract spectra from specific spatial regions</li>
+<li><strong>Dynamic Scaling:</strong> Linear, logarithmic, or square root intensity scaling</li>
+<li><strong>Frequency Information:</strong> Automatic detection of spectral axis</li>
+</ul>
     
-    <div class="pro-tip">
-        <p><strong>Pro Tip:</strong> For best performance with large cubes, select smaller regions when extracting spectra.</p>
-    </div>
+<div class="pro-tip">
+<p><strong>Pro Tip:</strong> For best performance with large cubes, select smaller regions when extracting spectra.</p>
+</div>
 </div>
 """
 
@@ -124,6 +124,6 @@ CUBE_VISUALIZER_DESCRIPTION = """
 # Training Dataset (example - include your full content)
 TRAINING_DATASET = """
 <table class="training-table">
-    <your full training dataset table here>
+<your full training dataset table here>
 </table>
 """
