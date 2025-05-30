@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions_3 import *
+from core_functions import *
 import tempfile
 import plotly.graph_objects as go
 import plotly.express as px
