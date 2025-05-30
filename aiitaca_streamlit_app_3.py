@@ -333,7 +333,7 @@ with tab_molecular:
             
             st.image(
                 FLOW_OF_WORK["image_path"],
-                use_column_width=True,
+                use_container_width=True,
                 caption=FLOW_OF_WORK.get("image_caption", ""),
                 width=None
             )
@@ -348,7 +348,7 @@ with tab_molecular:
             
             st.image(
                 ACKNOWLEDGMENTS["image_path"],
-                use_column_width=True,
+                use_container_width=True,
                 caption=ACKNOWLEDGMENTS.get("image_caption", "")
             )
             
