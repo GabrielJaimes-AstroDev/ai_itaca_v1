@@ -7,45 +7,45 @@ A remarkable upsurge in the complexity of molecules identified in the interstell
 
 PARAMS_EXPLANATION = """
 <div class="description-panel">
-                <h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
+<h3 style="text-align: center; margin-top: 0; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Technical Parameters Guide</h3>
                 
-                <div style="margin-bottom: 25px;">
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
-                <p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
+<div style="margin-bottom: 25px;">
+<h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔬 Peak Detection</h4>
+<p><strong>Sigma Emission (1.5):</strong> Threshold for peak detection in standard deviations (σ) of the noise. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values reduce false positives but may miss weak peaks. Typical range: 1.0-3.0</span></p>
                 
-                <p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
+<p><strong>Window Size (3):</strong> Points in Savitzky-Golay smoothing kernel. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Odd integers only. Larger values smooth noise but blur close peaks.</span></p>
                 
-                <p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
+<p><strong>Sigma Threshold (2.0):</strong> Minimum peak prominence (σ). 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Filters low-significance features. Critical for crowded spectra.</span></p>
                 
-                <p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
-                </div>
+<p><strong>FWHM (0.05 GHz):</strong> Expected line width at half maximum. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Should match your instrument's resolution. Affects line fitting.</span></p>
+</div>
                     
-                <div style="margin-bottom: 25px;">
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
-                <p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
+<div style="margin-bottom: 25px;">
+<h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">🔄 Matching Parameters</h4>
+<p><strong>Tolerance (0.1 GHz):</strong> Frequency matching window. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Accounts for Doppler shifts (±20 km/s at 100 GHz). Increase for broad lines.</span></p>
                 
-                <p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
-                </div>
+<p><strong>Min Peak Ratio (0.3):</strong> Relative intensity cutoff. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Peaks below this fraction of strongest line are excluded. Range: 0.1-0.5.</span></p>
+</div>
                 
-                <div>
-                <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
-                <p><strong>Top N Lines (30):</strong> Lines displayed in results. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
+ <div>
+ <h4 style="color: #1E88E5; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 15px;">📊 Output Settings</h4>
+<p><strong>Top N Lines (30):</strong> Lines displayed in results. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Doesn't affect analysis quality, only visualization density.</span></p>
                 
-                <p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
-                <span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
-                </div>
+<p><strong>Top N Similar (800):</strong> Synthetic spectra retained. 
+<span style="display: block; margin-left: 20px; font-size: 0.92em; color: #555;">Higher values improve accuracy but increase runtime. Max: 2000.</span></p>
+</div>
                 
-                <div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-                <p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
-                </div>
-                </div>
+<div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
+<p style="margin: 0; font-size: 0.9em;"><strong>Pro Tip:</strong> For ALMA data (high resolution), start with FWHM=0.05 GHz and Tolerance=0.05 GHz. For single-dish telescopes, try FWHM=0.2 GHz.</p>
+</div>
+</div>
 """
 
 TRAINING_DATASET = """
