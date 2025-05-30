@@ -327,10 +327,16 @@ with tab_molecular:
             </div>
             """, unsafe_allow_html=True)
 
+
     if flow_tab:
+        # Primero el HTML
+        st.markdown(FLOW_OF_WORK["html"], unsafe_allow_html=True)
+        
+        # Luego la imagen en el mismo contenedor
         with st.container():
-            st.markdown(FLOW_OF_WORK, unsafe_allow_html=True)
-            st.image("Flow_of_Work.jpg", caption="Workflow Diagram", use_container_width=True)
+            st.image(FLOW_OF_WORK["image_path"], 
+                    use_column_width=True,
+                    caption="Workflow Diagram")
     
     if Acknowledgments_tab:
         with st.container():
