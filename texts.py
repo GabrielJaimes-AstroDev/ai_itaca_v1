@@ -49,85 +49,85 @@ PARAMS_EXPLANATION = """
 """
 
 TRAINING_DATASET = """
- <table class="training-table">
-                <thead>
-                    <tr>
-                        <th>Molécule</th>
-                        <th>Tex Range (K)</th>
-                        <th>Tex Step</th>
-                        <th>LogN Range (cm⁻²)</th>
-                        <th>LogN Step</th>
-                        <th>Frequency Range (GHz)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>CO</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>SiO</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>HCO⁺ v=0,1,2</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>CH3CN</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>HNC</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>SO</td>
-                        <td>20 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                    <tr>
-                        <td>CH3OCHO_Yebes</td>
-                        <td>20 - 350</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>20 - 50</td>
-                    </tr>
-                    <tr>
-                        <td>CH3OCHO</td>
-                        <td>120 - 380</td>
-                        <td>5</td>
-                        <td>12 - 19.2</td>
-                        <td>0.1</td>
-                        <td>80 - 300</td>
-                    </tr>
-                </tbody>
-            </table>
-            """
+<table class="training-table">
+<thead>
+<tr>
+<th>Molécule</th>
+<th>Tex Range (K)</th>
+<th>Tex Step</th>
+<th>LogN Range (cm⁻²)</th>
+<th>LogN Step</th>
+<th>Frequency Range (GHz)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CO</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>SiO</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>HCO⁺ v=0,1,2</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>CH3CN</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>HNC</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>SO</td>
+<td>20 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+<tr>
+<td>CH3OCHO_Yebes</td>
+<td>20 - 350</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>20 - 50</td>
+</tr>
+<tr>
+<td>CH3OCHO</td>
+<td>120 - 380</td>
+<td>5</td>
+<td>12 - 19.2</td>
+<td>0.1</td>
+<td>80 - 300</td>
+</tr>
+</tbody>
+</table>
+
 
 # Main titles
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
