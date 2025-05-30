@@ -1,0 +1,273 @@
+ /* Fondo principal color plomo oscuro y texto claro */
+    .stApp, .main .block-container, body {
+        background-color: #15181c !important;  /* Color plomo oscuro */
+    }
+    
+    /* Texto general en blanco/tonos claros */
+    body, .stMarkdown, .stText, 
+    .stSlider [data-testid="stMarkdownContainer"],
+    .stSelectbox, .stNumberInput, .stTextInput,
+    .stTabs [data-baseweb="tab"] {
+        color: #FFFFFF !important;
+    }
+    
+    /* Sidebar blanco con texto oscuro (sin cambios) */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF !important;
+        border-right: 1px solid #e0e0e0;
+    }
+    [data-testid="stSidebar"] * {
+        color: #000000 !important;
+    }
+    
+    /* Botones azules SOLO dentro de Molecular Analyzer */
+    .stButton>button {
+        border: 2px solid #1E88E5 !important;
+        color: white !important;
+        background-color: #1E88E5 !important;
+        border-radius: 5px !important;
+        padding: 0.5rem 1rem !important;
+        transition: all 0.3s !important;
+    }
+    .stButton>button:hover {
+        border: 2px solid #0D47A1 !important;
+        background-color: #0D47A1 !important;
+    }
+    
+    /* Títulos y encabezados */
+    h1, h2, h3, h4, h5, h6 {
+        color: #1E88E5 !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    h1 {
+        border-bottom: 2px solid #1E88E5 !important;
+        padding-bottom: 10px !important;
+    }
+    
+    /* Panel de descripción adaptado */
+    .description-panel {
+        text-align: justify;
+        background-color: white !important;
+        color: black !important;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 5px solid #1E88E5 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .description-panel p {
+        margin-bottom: 15px;
+        line-height: 1.6;
+        color: #000000 !important;
+    }
+    .description-panel strong {
+        color: #000000 !important;
+        font-weight: bold;
+    }
+    
+    /* Sliders y controles */
+    .stSlider .thumb {
+        background-color: #1E88E5 !important;
+    }
+    .stSlider .track {
+        background-color: #5F9EA0 !important;  /* Tonos que combinan con plomo */
+    }
+    
+    /* Pestañas personalizadas */
+    /* Pestañas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding: 0 20px;
+        color: #FFFFFF !important;
+        background-color: #81acde !important;  /* Tono intermedio */
+        border-radius: 5px 5px 0 0;
+        border: 1px solid #1E88E5;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #1E88E5 !important;
+        color: white !important;
+    }    
+    
+    /* File uploader adaptado */
+    .stFileUploader>div>div>div>div {
+        background-color: #E5E7E9 !important;  /* Plomo muy claro */
+        border: 2px solid #B0E0E6 !important;
+        color: #000000 !important;
+        border-radius: 5px !important;
+        padding: 10px !important;
+    }
+    .stFileUploader>div>div>div>div:hover {
+        background-color: #D5D8DC !important;  /* Un poco más oscuro al hover */
+        border-color: #1E88E5 !important;
+    }
+    .stFileUploader>div>section>div>div>div>span {
+        color: #000000 !important;
+        font-size: 14px !important;
+    }
+    .stFileUploader>div>section>div>button {
+        background-color: #1E88E5 !important;
+        color: white !important;
+    }
+    .stFileUploader>div>section>div>button:hover {
+        background-color: #0D47A1 !important;
+    }
+    
+    /* Ajustes para gráficos y visualizaciones */
+    .stPlotlyChart, .stDataFrame {
+        background-color: #1e88e5 !important;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    
+    /* Mejoras para inputs y selects */
+    .stTextInput input, .stNumberInput input, 
+    .stSelectbox select {
+        background-color: #1e88e5 !important;
+        color: white !important;
+        border: 1px solid #5F9EA0 !important;
+    }
+    
+    /* Ocultar títulos de contenido de pestañas */
+    .tab-content h2, .tab-content h3, .tab-content h4 {
+        display: none !important;
+    }
+    
+    /* Estilo para los valores de Physical Parameters */
+    .physical-params {
+        color: #000000 !important;
+        font-size: 1.1rem !important;
+        margin: 5px 0 !important;
+    }
+    
+    /* Panel azul claro para el resumen */
+    .summary-panel {
+        background-color: #FFFFFF !important;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #1E88E5;
+        margin-bottom: 20px;
+    }
+    
+    /* Fondo del gráfico interactivo */
+    .js-plotly-plot .plotly, .plot-container {
+        background-color: #0D0F14 !important;
+    }
+    
+    /* Configuración del gráfico Plotly */
+    .plotly-graph-div {
+        background-color: #0D0F14 !important;
+    }
+    
+    /* Nuevos estilos para paneles de información */
+    .info-panel {
+        background-color: white !important;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 5px solid #1E88E5;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: black !important;
+    }
+    .info-panel h3 {
+        color: #1E88E5 !important;
+        margin-top: 0;
+    }
+    .info-panel img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+    .pro-tip {
+        background-color: #f0f7ff !important;
+        padding: 12px;
+        border-radius: 5px;
+        border-left: 4px solid #1E88E5;
+        margin-top: 15px;
+    }
+    .pro-tip p {
+        margin: 0;
+        font-size: 0.9em;
+        color: #333 !important;
+    }
+    
+    /* Estilo para la barra de progreso */
+    .progress-bar {
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    
+    /* Espacio para los botones de información */
+    .info-buttons-container {
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* Contenedor de botones ajustado */
+    .buttons-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* Estilos para el visualizador de cubos */
+    .cube-controls {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 5px solid #1E88E5;
+    }
+    .cube-status {
+        background-color: #f8f9fa !important;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-family: monospace;
+        color: #000000 !important;
+    }
+    .spectrum-display {
+        background-color: white !important;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border-left: 5px solid #1E88E5;
+        color: #000000 !important;
+    }
+    
+    /* Estilo para la tabla de training dataset */
+    .training-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 0.9em;
+        font-family: sans-serif;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    }
+    .training-table thead tr {
+        background-color: #1E88E5;
+        color: #ffffff;
+        text-align: left;
+    }
+    .training-table th,
+    .training-table td {
+        padding: 12px 15px;
+        border: 1px solid #dddddd;
+    }
+    .training-table tbody tr {
+        border-bottom: 1px solid #dddddd;
+    }
+    .training-table tbody tr:nth-of-type(even) {
+        background-color: #f3f3f3;
+    }
+    .training-table tbody tr:last-of-type {
+        border-bottom: 2px solid #1E88E5;
+    }
+    .training-table tbody tr:hover {
+        background-color: #f1f1f1;
+        color: #000000;
+    }
