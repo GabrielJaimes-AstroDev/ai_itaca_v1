@@ -67,10 +67,10 @@ TRAINING_DATASET = """
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
 SUBTITLE = "Molecular Spectrum Analyzer"
 
-FLOW_OF_WORK = """
+FLOW_OF_WORK_CONTENT = """
 <div style="margin-top: 20px;">
 <h4 style="color: #1E88E5; margin-bottom: 10px;">Analysis Pipeline Steps:</h4>
-<ol style="color: black; padding-left: 20px;">
+<ol style="color: white; padding-left: 20px;">
 <li><strong>Spectrum Input:</strong> Upload your observational spectrum</li>
 <li><strong>Pre-processing:</strong> Noise reduction and baseline correction</li>
 <li><strong>Peak Detection:</strong> Identify significant spectral features</li>
@@ -80,14 +80,14 @@ FLOW_OF_WORK = """
 </ol>
 </div>
 
-<div style="margin-top: 20px; padding: 12px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #1E88E5;">
-<p style="margin: 0; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+<div class="pro-tip" style="margin-top: 20px; padding: 12px; background-color: #0D0F14; border-left: 4px solid #1E88E5; border-radius: 4px;">
+    <p style="margin: 0; color: white; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
 </div>
 """
 
-ACKNOWLEDGMENTS = """
-<div class="description-panel" style="text-align: justify; padding: 0 15px;">
-<p>"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."</p>
+ACKNOWLEDGMENTS_CONTENT = """
+<div class="description-panel" style="text-align: justify; color: white; padding: 10px;">
+"The funding for these actions/grants and contracts comes from the European Union's Recovery and Resilience Facility-Next Generation, in the framework of the General Invitation of the Spanish Government's public business entity Red.es to participate in talent attraction and retention programmes within Investment 4 of Component 19 of the Recovery, Transformation and Resilience Plan."
 </div>
 """
 
