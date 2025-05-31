@@ -48,20 +48,25 @@ PARAMS_EXPLANATION = """
 </div>
 """
 
-TRAINING_DATASET = """
-### Training Dataset
 
-| Molécule       | Tex (K)  | LogN (cm⁻²) | Frecuencia (GHz) |
-|----------------|----------|-------------|------------------|
-| CO             | 20-380   | 12-19.2     | 80-300           |
-| SiO            | 20-380   | 12-19.2     | 80-300           |
-| HCO⁺           | 20-380   | 12-19.2     | 80-300           |
-| CH3CN          | 20-380   | 12-19.2     | 80-300           |
-| HNC            | 20-380   | 12-19.2     | 80-300           |
-| SO             | 20-380   | 12-19.2     | 80-300           |
-| CH3OCHO_Yebes  | 20-350   | 12-19.2     | 20-50            |
-| CH3OCHO        | 120-380  | 12-19.2     | 80-300           |
-"""
+TRAINING_DATASET = {
+    "content": """
+    **Training Dataset Parameters**
+
+    | Molecule        | Tex Range (K) | Tex Step | LogN Range (cm⁻²) | LogN Step | Frequency Range (GHz) |
+    |-----------------|---------------|----------|-------------------|-----------|-----------------------|
+    | CO              | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | SiO             | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | HCO⁺ v=0,1,2    | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | CH3CN           | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | HNC             | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | SO              | 20 - 380      | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+    | CH3OCHO_Yebes   | 20 - 350      | 5        | 12 - 19.2         | 0.1       | 20 - 50               |
+    | CH3OCHO         | 120 - 380     | 5        | 12 - 19.2         | 0.1       | 80 - 300              |
+
+    *Note: Generated using LTE radiative transfer models under typical ISM conditions.*
+    """
+}
 
 # Main titles
 MAIN_TITLE = "AI-ITACA | Artificial Intelligence Integral Tool for AstroChemical Analysis"
