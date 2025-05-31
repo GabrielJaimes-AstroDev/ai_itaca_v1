@@ -345,7 +345,7 @@ with tab_molecular:
                     use_container_width=True,
                     output_format="JPEG")
     
-            st.markdown(FLOW_OF_WORK_CONTENT, unsafe_allow_html=True)
+            st.markdown(FLOW_OF_WORK, unsafe_allow_html=True)
     
     if Acknowledgments_tab:
         with st.container():
@@ -365,7 +365,7 @@ with tab_molecular:
                     use_container_width=True,
                     output_format="PNG")
     
-            st.markdown(ACKNOWLEDGMENTS_CONTENT, unsafe_allow_html=True)
+            st.markdown(ACKNOWLEDGMENTS, unsafe_allow_html=True)
 
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
