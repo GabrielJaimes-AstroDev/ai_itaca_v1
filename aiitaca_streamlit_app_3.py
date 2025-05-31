@@ -326,28 +326,46 @@ with tab_molecular:
                 <p><strong>Note:</strong> The training dataset was generated using LTE radiative transfer models under typical ISM conditions.</p>
             </div>
             """, unsafe_allow_html=True)
+
     if flow_tab:
         with st.container():
-            st.markdown('<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Flow of Work Diagram</h3>', 
-                       unsafe_allow_html=True)
-            
+            st.markdown("""
+                <div class="info-panel">
+                    <h3 style="text-align: center; 
+                              color: white; 
+                              border-bottom: 2px solid #1E88E5; 
+                              padding-bottom: 10px;
+                              margin-bottom: 20px;">
+                        Flow of Work Diagram
+                    </h3>
+                </div>
+            """, unsafe_allow_html=True)
+    
             st.image("Flow_of_Work.jpg", 
                     use_container_width=True,
-                    caption="Workflow Diagram")
-            
-            st.markdown(FLOW_OF_WORK, unsafe_allow_html=True)
+                    output_format="JPEG")
     
-    # Acknowledgments
+            st.markdown(FLOW_OF_WORK_CONTENT, unsafe_allow_html=True)
+    
     if Acknowledgments_tab:
         with st.container():
-            st.markdown('<h3 style="text-align: center; color: black; border-bottom: 2px solid #1E88E5; padding-bottom: 10px;">Project Acknowledgments</h3>', 
-                       unsafe_allow_html=True)
-            
+            st.markdown("""
+                <div class="info-panel">
+                    <h3 style="text-align: center; 
+                              color: white; 
+                              border-bottom: 2px solid #1E88E5; 
+                              padding-bottom: 10px;
+                              margin-bottom: 20px;">
+                        Project Acknowledgments
+                    </h3>
+                </div>
+            """, unsafe_allow_html=True)
+    
             st.image("Acknowledgments.png", 
                     use_container_width=True,
-                    caption="Funding Acknowledgments")
-            
-            st.markdown(ACKNOWLEDGMENTS, unsafe_allow_html=True)
+                    output_format="PNG")
+    
+            st.markdown(ACKNOWLEDGMENTS_CONTENT, unsafe_allow_html=True)
 
     if current_uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
