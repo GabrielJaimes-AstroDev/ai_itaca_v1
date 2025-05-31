@@ -81,7 +81,7 @@ FLOW_OF_WORK_CONTENT = """
 </div>
 
 <div class="pro-tip" style="margin-top: 20px; padding: 12px; background-color: #0D0F14; border-left: 4px solid #1E88E5; border-radius: 4px;">
-    <p style="margin: 0; color: white; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
+<p style="margin: 0; color: white; font-size: 0.9em;"><strong>Note:</strong> The complete analysis typically takes 30-90 seconds depending on spectrum complexity and selected parameters.</p>
 </div>
 """
 
