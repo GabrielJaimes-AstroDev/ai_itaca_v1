@@ -3,7 +3,6 @@ numpy
 matplotlib
 plotly
 scikit-learn
-tensorflow
 gdown
 scipy
 tqdm
