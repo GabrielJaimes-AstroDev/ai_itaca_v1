@@ -1,3 +1,4 @@
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ from scipy.signal import find_peaks, peak_widths
 from matplotlib import rcParams
 import tensorflow as tf
 import zipfile
+import re
 from astropy.io import fits
 
 rcParams.update({
@@ -37,59 +39,30 @@ DEFAULT_CONFIG = {
     }
 }
 
-def sanitize_spectrum(freq, spec):
-    """Elimina valores no finitos y normaliza el espectro"""
-    valid = np.isfinite(freq) & np.isfinite(spec) & (spec != 0)
-    if not np.any(valid):
-        raise ValueError("No hay datos válidos después del filtrado")
-    
-    freq = freq[valid]
-    spec = spec[valid]
-    
-    # Normalización opcional (descomenta si necesitas)
-    # spec = (spec - np.min(spec)) / (np.max(spec) - np.min(spec) + 1e-10)
-    
-    return freq, spec
+def detect_peaks(x, y, config = DEFAULT_CONFIG):
+    peaks, _ = find_peaks(y, height=config['peak_matching']['sigma_threshold'] * np.std(y), width=1)
+    widths = peak_widths(y, peaks, rel_height=0.2)[0] * (x[1] - x[0])
+    return sorted([{
+        'center': x[p],
+        'height': y[p],
+        'width': widths[i],
+        'left': x[p] - widths[i] / 2,
+        'right': x[p] + widths[i] / 2
+    } for i, p in enumerate(peaks)], key=lambda p: p['height'], reverse=True)
 
-def detect_peaks(x, y, config=DEFAULT_CONFIG):
-    try:
-        # Filtrado de valores no finitos
-        x, y = sanitize_spectrum(x, y)
-        
-        if len(y) < 5:  # Mínimo de puntos para detectar picos
-            return []
-        
-        # Calcula el umbral de altura basado en la desviación estándar
-        threshold = config['peak_matching']['sigma_threshold'] * np.nanstd(y)
-        peaks, _ = find_peaks(y, height=threshold, width=1)
-        
-        if len(peaks) == 0:
-            return []
-        
-        widths = peak_widths(y, peaks, rel_height=0.2)[0] * (x[1] - x[0])
-        
-        return sorted([{
-            'center': x[p],
-            'height': y[p],
-            'width': widths[i],
-            'left': x[p] - widths[i] / 2,
-            'right': x[p] + widths[i] / 2
-        } for i, p in enumerate(peaks)], key=lambda p: p['height'], reverse=True)
-    
-    except Exception as e:
-        print(f"Error en detección de picos: {str(e)}")
-        return []
 
 def find_input_file(filepath):
+    
     if os.path.exists(filepath):
         return filepath
     
-    for ext in ['', '.txt', '.dat', '.fits', '.spec']:
+    
+    for ext in ['', '.txt', '.dat']:
         test_path = f"{filepath}{ext}"
         if os.path.exists(test_path):
             return test_path
     
-    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat', '.fits', '.spec')")
+    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
 
 def process_input_file(filepath):
     input_logn = None
@@ -99,13 +72,44 @@ def process_input_file(filepath):
     spec = np.array([])
 
     try:
-        # Intento leer como TXT
+        # .TXT
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 header = lines[0].strip() if lines else ""
-                
-                # Extraer parámetros del header
+                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
+                if input_params:
+                    try:
+                        input_logn = float(input_params.group(1))
+                        input_tex = float(input_params.group(2))
+                    except (ValueError, TypeError):
+                        input_logn = None
+                        input_tex = None
+
+                data = []
+                for line in lines[1:]:
+                    line = line.strip()
+                    if line and not line.startswith(("//", "#")):
+                        parts = re.split(r'[\s,;]+', line)
+                        if len(parts) >= 2:
+                            try:
+                                frequency = float(parts[0]) * 1e9  # Convertir a Hz
+                                intensity = float(parts[1])
+                                data.append((frequency, intensity))
+                            except ValueError:
+                                continue
+
+                if len(data) >= 10:  # Mínimo 10 puntos válidos
+                    freq, spec = zip(*data)
+                    freq = np.array(freq)
+                    spec = np.array(spec)
+                    return freq, spec, header, input_logn, input_tex
+
+        except UnicodeDecodeError:
+            # .TXT Codex UTF-8, latin-1
+            with open(filepath, 'r', encoding='latin-1') as file:
+                lines = file.readlines()
+                header = lines[0].strip() if lines else ""
                 input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
                 if input_params:
                     try:
@@ -130,49 +134,14 @@ def process_input_file(filepath):
 
                 if len(data) >= 10:
                     freq, spec = zip(*data)
-                    freq = np.array(freq, dtype=np.float64)
-                    spec = np.array(spec, dtype=np.float64)
-                    freq, spec = sanitize_spectrum(freq, spec)
+                    freq = np.array(freq)
+                    spec = np.array(spec)
                     return freq, spec, header, input_logn, input_tex
 
-        except UnicodeDecodeError:
-            # Intento con otro encoding
-            with open(filepath, 'r', encoding='latin-1') as file:
-                lines = file.readlines()
-                header = lines[0].strip() if lines else ""
-                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-                if input_params:
-                    try:
-                        input_logn = float(input_params.group(1))
-                        input_tex = float(input_params.group(2))
-                    except (ValueError, TypeError):
-                        input_logn = None
-                        input_tex = None
-
-                data = []
-                for line in lines[1:]:
-                    line = line.strip()
-                    if line and not line.startswith(("//", "#")):
-                        parts = re.split(r'[\s,;]+', line)
-                        if len(parts) >= 2:
-                            try:
-                                frequency = float(parts[0]) * 1e9
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
-                            except ValueError:
-                                continue
-
-                if len(data) >= 10:
-                    freq, spec = zip(*data)
-                    freq = np.array(freq, dtype=np.float64)
-                    spec = np.array(spec, dtype=np.float64)
-                    freq, spec = sanitize_spectrum(freq, spec)
-                    return freq, spec, header, input_logn, input_tex
-
-        # Intento leer como FITS
+        # .FITS
         try:
             with fits.open(filepath) as hdul:
-                if len(hdul) > 1:
+                if len(hdul) > 1:  # Asegurarnos que tiene extensión de datos
                     table = hdul[1].data
                     
                     all_freqs = []
@@ -186,7 +155,7 @@ def process_input_file(filepath):
                         
                         n = len(spectrum)
                         channels = np.arange(n)
-                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3
+                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
                         
                         all_freqs.append(frequencies)
                         all_intensities.append(spectrum)
@@ -198,12 +167,11 @@ def process_input_file(filepath):
                     freq = combined_freqs[sorted_indices]
                     spec = combined_intensities[sorted_indices]
                     
-                    freq, spec = sanitize_spectrum(freq, spec)
                     header = f"Processed from FITS file: {os.path.basename(filepath)}"
                     return freq, spec, header, input_logn, input_tex
 
         except Exception as e_fits:
-            # Intento leer como SPEC (zip con FITS)
+            # .SPEC
             if zipfile.is_zipfile(filepath):
                 extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
                 os.makedirs(extract_folder, exist_ok=True)
@@ -228,7 +196,7 @@ def process_input_file(filepath):
                                 
                                 n = len(spectrum)
                                 channels = np.arange(n)
-                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3
+                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
                                 
                                 all_freqs.append(frequencies)
                                 all_intensities.append(spectrum)
@@ -240,11 +208,10 @@ def process_input_file(filepath):
                             freq = combined_freqs[sorted_indices]
                             spec = combined_intensities[sorted_indices]
                             
-                            freq, spec = sanitize_spectrum(freq, spec)
                             header = f"Processed from FITS file within {os.path.basename(filepath)}"
                             return freq, spec, header, input_logn, input_tex
                 finally:
-                    # Limpieza
+                    # Limpieza de archivos temporales
                     for root, dirs, files in os.walk(extract_folder, topdown=False):
                         for name in files:
                             os.remove(os.path.join(root, name))
@@ -256,38 +223,6 @@ def process_input_file(filepath):
         raise ValueError(f"Error al procesar el archivo {filepath}: {str(e)}")
 
     raise ValueError("No se pudo procesar el archivo con ningún método conocido")
-
-def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
-    try:
-        # Saneamiento de datos de entrada
-        input_freq, input_spec = sanitize_spectrum(input_freq, input_spec)
-        
-        # Determinar rango de frecuencias de entrenamiento
-        train_min_freq = np.min([np.min(f) for f in train_freq if len(f) > 0])
-        train_max_freq = np.max([np.max(f) for f in train_freq if len(f) > 0])
-        
-        # Verificar solapamiento
-        valid_mask = (input_freq >= train_min_freq) & (input_freq <= train_max_freq)
-        if not np.any(valid_mask):
-            raise ValueError("El rango de frecuencias del espectro de entrada no coincide con los datos de entrenamiento")
-        
-        # Crear nueva escala de frecuencia
-        new_x = np.linspace(train_min_freq, train_max_freq, train_data.shape[1])
-        
-        # Interpolación con manejo de bordes
-        interp_spec = np.interp(
-            new_x, 
-            input_freq[valid_mask], 
-            input_spec[valid_mask], 
-            left=np.min(input_spec[valid_mask]), 
-            right=np.min(input_spec[valid_mask])
-        )
-        
-        return new_x, interp_spec.flatten()
-    
-    except Exception as e:
-        raise ValueError(f"Error preparando espectro de entrada: {str(e)}")
-        
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
     train_min_freq = np.min(train_freq)
@@ -685,6 +620,8 @@ def plot_individual_matches(new_x, input_spec, matches, fig=None):
     plt.tight_layout()
     return fig
 
+
+
 def analyze_spectrum(filepath, model, train_data, train_freq, 
                     train_filenames, train_headers, 
                     train_logn, train_tex, config, database_folder):
@@ -694,76 +631,49 @@ def analyze_spectrum(filepath, model, train_data, train_freq,
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File not found: {filepath}")
         
-        # Procesamiento con manejo de errores mejorado
-        try:
-            input_freq, input_spec, header, input_logn, input_tex = process_input_file(filepath)
-        except Exception as e:
-            raise ValueError(f"Error procesando archivo de entrada: {str(e)}")
+        input_freq, input_spec, header, input_logn, input_tex = process_input_file(filepath)
+        new_x, input_spec = prepare_input_spectrum(input_freq, input_spec, train_freq, train_data)
         
-        try:
-            new_x, input_spec = prepare_input_spectrum(input_freq, input_spec, train_freq, train_data)
-        except Exception as e:
-            raise ValueError(f"Error preparando espectro para análisis: {str(e)}")
-        
-        # Detección de picos con validación
         input_peaks = detect_peaks(new_x, input_spec, config)
-        if not input_peaks:
-            print("Warning: No se detectaron picos en el espectro de entrada")
         input_peaks = input_peaks[:config['peak_matching']['top_n_lines']]
         
         print("Precomputing peaks for training spectra...")
         train_peaks_list = []
         for i in range(train_data.shape[0]):
-            try:
-                synth_spec = train_data[i,:,0]
-                synth_peaks = detect_peaks(train_freq[i], synth_spec)
-                train_peaks_list.append(synth_peaks[:config['peak_matching']['top_n_lines']])
-            except Exception as e:
-                print(f"Error detectando picos en espectro de entrenamiento {i}: {str(e)}")
-                train_peaks_list.append([])
+            synth_spec = train_data[i,:,0]
+            synth_peaks = detect_peaks(train_freq[i], synth_spec)
+            train_peaks_list.append(synth_peaks[:config['peak_matching']['top_n_lines']])
         
-        # Cálculo de métricas con verificación
-        try:
-            similarities, distances = enhanced_calculate_metrics(
-                input_spec, train_data.squeeze(), input_peaks, train_peaks_list, config)
-        except Exception as e:
-            raise ValueError(f"Error calculando métricas de similitud: {str(e)}")
+        similarities, distances = enhanced_calculate_metrics(
+            input_spec, train_data.squeeze(), input_peaks, train_peaks_list, config)
         
         top_n = config['peak_matching']['top_n_similar']
         top_similar_indices = np.argsort(distances)[:top_n]
         
-        # Procesamiento de resultados
         results = []
         for i in top_similar_indices:
-            try:
-                synth_spec = train_data[i,:,0]
-                synth_peaks = train_peaks_list[i]
-                
-                matches = match_peaks(input_peaks, synth_peaks, config)
-                global_score = calculate_global_score(matches)
-                
-                results.append({
-                    'index': i,
-                    'filename': train_filenames[i],
-                    'header': train_headers[i],
-                    'x_synth': train_freq[i],
-                    'y_synth': synth_spec,
-                    'matches': matches,
-                    'score': global_score,
-                    'logn': train_logn[i],
-                    'tex': train_tex[i],
-                    'similarity': similarities[i],
-                    'distance': distances[i],
-                    'input_logn': input_logn,
-                    'input_tex': input_tex,
-                    'input_peaks': input_peaks
-                })
-            except Exception as e:
-                print(f"Error procesando resultado {i}: {str(e)}")
-                continue
-        
-        if not results:
-            raise ValueError("No se generaron resultados válidos")
+            synth_spec = train_data[i,:,0]
+            synth_peaks = train_peaks_list[i]
+            
+            matches = match_peaks(input_peaks, synth_peaks, config)
+            global_score = calculate_global_score(matches)
+            
+            results.append({
+                'index': i,
+                'filename': train_filenames[i],
+                'header': train_headers[i],
+                'x_synth': train_freq[i],
+                'y_synth': synth_spec,
+                'matches': matches,
+                'score': global_score,
+                'logn': train_logn[i],
+                'tex': train_tex[i],
+                'similarity': similarities[i],
+                'distance': distances[i],
+                'input_logn': input_logn,
+                'input_tex': input_tex,
+                'input_peaks': input_peaks
+            })
         
         results.sort(key=lambda r: r['score'])
         top_matches = results[:config['peak_matching']['top_n_lines']]
