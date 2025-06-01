@@ -12,7 +12,7 @@ import shutil
 import time
 from astropy.io import fits
 import warnings
-from paths import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
+from paths_3 import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
 from texts import (
     PROJECT_DESCRIPTION,
     PARAMS_EXPLANATION,
