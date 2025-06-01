@@ -1,5 +1,3 @@
-Mira este codigo:
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +8,9 @@ from scipy.interpolate import interp1d
 from scipy.signal import find_peaks, peak_widths
 from matplotlib import rcParams
 import tensorflow as tf
-
+import zipfile
+import re
+from astropy.io import fits
 
 rcParams.update({
     'font.size': 10,
@@ -21,12 +21,14 @@ rcParams.update({
     'figure.autolayout': True
 })
 
-CONFIG = {
-    'input_spectrum_file': r"C:\Users\Usuario\Downloads\1.Examples_molecules\example_2",
-    'output_pdf': "CNN_PEAK_MATCHING_ANALYSIS_81",
-    'trained_models_dir': 'MODELS_CH3OCHO_narrow6fwhm_3',
+DEFAULT_CONFIG = {
+    'input_spectrum_file': r"C:\1. AI - ITACA\9. JupyterNotebook\_BK\example_4mols_AVER_",
+    'output_pdf': "CNN_PEAK_MATCHING_ANALYSIS_71_",
+    'trained_models_dir': r"C:\1. AI - ITACA\9. JupyterNotebook\MODELS_01",
     'peak_matching': {
-        'sigma_threshold': 1,
+        'sigma_threshold': 1,          
+        'sigma_emission': 1.5,         
+        'window_size': 3,              
         'fwhm_ghz': 0.08,
         'tolerance_ghz': 0.2,
         'min_peak_height_ratio': 0.5,
@@ -36,40 +38,190 @@ CONFIG = {
     }
 }
 
+def detect_peaks(x, y, config = DEFAULT_CONFIG):
+    peaks, _ = find_peaks(y, height=config['peak_matching']['sigma_threshold'] * np.std(y), width=1)
+    widths = peak_widths(y, peaks, rel_height=0.2)[0] * (x[1] - x[0])
+    return sorted([{
+        'center': x[p],
+        'height': y[p],
+        'width': widths[i],
+        'left': x[p] - widths[i] / 2,
+        'right': x[p] + widths[i] / 2
+    } for i, p in enumerate(peaks)], key=lambda p: p['height'], reverse=True)
+
+
+def find_input_file(filepath):
+    
+    if os.path.exists(filepath):
+        return filepath
+    
+    
+    for ext in ['', '.txt', '.dat']:
+        test_path = f"{filepath}{ext}"
+        if os.path.exists(test_path):
+            return test_path
+    
+    raise FileNotFoundError(f"No se encontró el archivo {filepath} (probado con extensiones: '', '.txt', '.dat')")
+
 def process_input_file(filepath):
-    with open(filepath, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-        header = lines[0].strip() if lines else ""
-        
-        input_logn = None
-        input_tex = None
-        input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
-        if input_params:
-            try:
-                input_logn = float(input_params.group(1))
-                input_tex = float(input_params.group(2))
-            except (ValueError, TypeError):
-                input_logn = None
-                input_tex = None
-        
-        data = []
-        for line in lines[1:]:
-            line = line.strip()
-            if line and not line.startswith(("//", "#")):
-                parts = re.split(r'[\s,;]+', line)
-                if len(parts) >= 2:
+    input_logn = None
+    input_tex = None
+    header = ""
+    freq = np.array([])
+    spec = np.array([])
+
+    try:
+        # .TXT
+        try:
+            with open(filepath, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                header = lines[0].strip() if lines else ""
+                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
+                if input_params:
                     try:
-                        freq = float(parts[0]) * 1e9
-                        intensity = float(parts[1])
-                        data.append((freq, intensity))
-                    except ValueError:
-                        continue
-        
-        if len(data) < 10:
-            raise ValueError("Insufficient valid data points in spectrum")
-        
-        freq, spec = zip(*data)
-        return np.array(freq), np.array(spec), header, input_logn, input_tex
+                        input_logn = float(input_params.group(1))
+                        input_tex = float(input_params.group(2))
+                    except (ValueError, TypeError):
+                        input_logn = None
+                        input_tex = None
+
+                data = []
+                for line in lines[1:]:
+                    line = line.strip()
+                    if line and not line.startswith(("//", "#")):
+                        parts = re.split(r'[\s,;]+', line)
+                        if len(parts) >= 2:
+                            try:
+                                frequency = float(parts[0]) * 1e9  # Convertir a Hz
+                                intensity = float(parts[1])
+                                data.append((frequency, intensity))
+                            except ValueError:
+                                continue
+
+                if len(data) >= 10:  # Mínimo 10 puntos válidos
+                    freq, spec = zip(*data)
+                    freq = np.array(freq)
+                    spec = np.array(spec)
+                    return freq, spec, header, input_logn, input_tex
+
+        except UnicodeDecodeError:
+            # .TXT Codex UTF-8, latin-1
+            with open(filepath, 'r', encoding='latin-1') as file:
+                lines = file.readlines()
+                header = lines[0].strip() if lines else ""
+                input_params = re.search(r'logn[\s=:]+([\d.]+).*tex[\s=:]+([\d.]+)', header.lower()) if header else None
+                if input_params:
+                    try:
+                        input_logn = float(input_params.group(1))
+                        input_tex = float(input_params.group(2))
+                    except (ValueError, TypeError):
+                        input_logn = None
+                        input_tex = None
+
+                data = []
+                for line in lines[1:]:
+                    line = line.strip()
+                    if line and not line.startswith(("//", "#")):
+                        parts = re.split(r'[\s,;]+', line)
+                        if len(parts) >= 2:
+                            try:
+                                frequency = float(parts[0]) * 1e9  # Convertir a Hz
+                                intensity = float(parts[1])
+                                data.append((frequency, intensity))
+                            except ValueError:
+                                continue
+
+                if len(data) >= 10:
+                    freq, spec = zip(*data)
+                    freq = np.array(freq)
+                    spec = np.array(spec)
+                    return freq, spec, header, input_logn, input_tex
+
+        # .FITS
+        try:
+            with fits.open(filepath) as hdul:
+                if len(hdul) > 1:  # Asegurarnos que tiene extensión de datos
+                    table = hdul[1].data
+                    
+                    all_freqs = []
+                    all_intensities = []
+                    
+                    for row in table:
+                        spectrum = row['DATA']
+                        crval3 = row['CRVAL3']
+                        cdelt3 = row['CDELT3']
+                        crpix3 = row['CRPIX3']
+                        
+                        n = len(spectrum)
+                        channels = np.arange(n)
+                        frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+                        
+                        all_freqs.append(frequencies)
+                        all_intensities.append(spectrum)
+                    
+                    combined_freqs = np.concatenate(all_freqs)
+                    combined_intensities = np.concatenate(all_intensities)
+                    
+                    sorted_indices = np.argsort(combined_freqs)
+                    freq = combined_freqs[sorted_indices]
+                    spec = combined_intensities[sorted_indices]
+                    
+                    header = f"Processed from FITS file: {os.path.basename(filepath)}"
+                    return freq, spec, header, input_logn, input_tex
+
+        except Exception as e_fits:
+            # .SPEC
+            if zipfile.is_zipfile(filepath):
+                extract_folder = "temp_unzip_" + os.path.basename(filepath).replace(".", "_")
+                os.makedirs(extract_folder, exist_ok=True)
+                try:
+                    with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                        zip_ref.extractall(extract_folder)
+
+                    fits_files = [f for f in os.listdir(extract_folder) if f.endswith('.fits')]
+                    if fits_files:
+                        fits_file_path = os.path.join(extract_folder, fits_files[0])
+                        with fits.open(fits_file_path) as hdul:
+                            table = hdul[1].data
+                            
+                            all_freqs = []
+                            all_intensities = []
+                            
+                            for row in table:
+                                spectrum = row['DATA']
+                                crval3 = row['CRVAL3']
+                                cdelt3 = row['CDELT3']
+                                crpix3 = row['CRPIX3']
+                                
+                                n = len(spectrum)
+                                channels = np.arange(n)
+                                frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
+                                
+                                all_freqs.append(frequencies)
+                                all_intensities.append(spectrum)
+                            
+                            combined_freqs = np.concatenate(all_freqs)
+                            combined_intensities = np.concatenate(all_intensities)
+                            
+                            sorted_indices = np.argsort(combined_freqs)
+                            freq = combined_freqs[sorted_indices]
+                            spec = combined_intensities[sorted_indices]
+                            
+                            header = f"Processed from FITS file within {os.path.basename(filepath)}"
+                            return freq, spec, header, input_logn, input_tex
+                finally:
+                    # Limpieza de archivos temporales
+                    for root, dirs, files in os.walk(extract_folder, topdown=False):
+                        for name in files:
+                            os.remove(os.path.join(root, name))
+                        for name in dirs:
+                            os.rmdir(os.path.join(root, name))
+                    os.rmdir(extract_folder)
+
+    except Exception as e:
+        raise ValueError(f"Error al procesar el archivo {filepath}: {str(e)}")
+
+    raise ValueError("No se pudo procesar el archivo con ningún método conocido")
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
     train_min_freq = np.min(train_freq)
@@ -83,18 +235,7 @@ def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
     interp_spec = np.interp(new_x, input_freq[valid_mask], input_spec[valid_mask], left=0, right=0)
     return new_x, interp_spec.flatten()
 
-def detect_peaks(x, y, sigma=1):
-    peaks, _ = find_peaks(y, height=sigma * np.std(y), width=1)
-    widths = peak_widths(y, peaks, rel_height=0.2)[0] * (x[1] - x[0])
-    return sorted([{
-        'center': x[p],
-        'height': y[p],
-        'width': widths[i],
-        'left': x[p] - widths[i] / 2,
-        'right': x[p] + widths[i] / 2
-    } for i, p in enumerate(peaks)], key=lambda p: p['height'], reverse=True)
-
-def match_peaks(input_peaks, synth_peaks):
+def match_peaks(input_peaks, synth_peaks, config = DEFAULT_CONFIG):
     used = set()
     matches = []
 
@@ -107,10 +248,10 @@ def match_peaks(input_peaks, synth_peaks):
                 continue
                 
             delta_freq = abs(ip['center'] - sp['center'])
-            if delta_freq <= CONFIG['peak_matching']['tolerance_ghz'] * 1e9:
+            if delta_freq <= config['peak_matching']['tolerance_ghz'] * 1e9:
                 intensity_diff = abs(ip['height'] - sp['height']) / ip['height'] if ip['height'] != 0 else 0
                 score = (
-                    0.1 * (delta_freq / (CONFIG['peak_matching']['fwhm_ghz'] * 1e9)) +
+                    0.1 * (delta_freq / (config['peak_matching']['fwhm_ghz'] * 1e9)) +
                     0.9 * intensity_diff
                 )
                 if not best or score < best['score']:
@@ -132,12 +273,13 @@ def calculate_global_score(matches):
         return 999
     return np.mean([m['score'] for m in matches])
 
-def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_peaks_list=None):
-    def detect_emission_regions(spec, sigma=1.5, window=3):
+def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_peaks_list=None, config=DEFAULT_CONFIG):
+    def detect_emission_regions(spec, config):
         mean = np.mean(spec)
         std = np.std(spec)
-        threshold = mean + sigma * std
+        threshold = mean + config['peak_matching']['sigma_emission'] * std
         peaks, _ = find_peaks(spec, height=threshold)
+        window = config['peak_matching']['window_size']
         return [(max(p - window, 0), min(p + window, len(spec))) for p in peaks]
 
     def extract_peak_info(spec, regions):
@@ -157,14 +299,14 @@ def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_p
     distances = np.zeros(len(train_data))
 
     if input_peaks is None:
-        input_regions = detect_emission_regions(input_spec)
+        input_regions = detect_emission_regions(input_spec, config)
         input_peaks = extract_peak_info(input_spec, input_regions)
 
     for i, train_spec in enumerate(train_data):
         train_peaks = train_peaks_list[i] if train_peaks_list is not None and i < len(train_peaks_list) else None
 
         if train_peaks is None:
-            train_regions = detect_emission_regions(train_spec)
+            train_regions = detect_emission_regions(train_spec, config)
             train_peaks = extract_peak_info(train_spec, train_regions)
 
         peak_pos_score = 0
@@ -196,8 +338,11 @@ def enhanced_calculate_metrics(input_spec, train_data, input_peaks=None, train_p
     return similarities, distances
 
 def plot_similarity_metrics(train_logn, train_tex, similarities, distances, 
-                          top_similar_indices, input_logn, input_tex, pdf):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+                          top_similar_indices, input_logn, input_tex, fig=None):
+    if fig is None:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+    else:
+        ax1, ax2 = fig.subplots(1, 2)
     
     sc1 = ax1.scatter(train_logn, similarities, c=train_tex, cmap='viridis', alpha=0.3, label='All spectra')
     ax1.scatter(train_logn[top_similar_indices], similarities[top_similar_indices], 
@@ -221,12 +366,14 @@ def plot_similarity_metrics(train_logn, train_tex, similarities, distances,
     plt.colorbar(sc2, ax=ax2, label='Tex (K)')
     
     plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close(fig)
+    return fig
 
 def plot_tex_metrics(train_tex, train_logn, similarities, distances, 
-                    top_similar_indices, input_tex, input_logn, pdf):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+                    top_similar_indices, input_tex, input_logn, fig=None):
+    if fig is None:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+    else:
+        ax1, ax2 = fig.subplots(1, 2)
     
     sc1 = ax1.scatter(train_tex, similarities, c=train_logn, cmap='plasma', alpha=0.3, label='All spectra')
     ax1.scatter(train_tex[top_similar_indices], similarities[top_similar_indices], 
@@ -250,13 +397,15 @@ def plot_tex_metrics(train_tex, train_logn, similarities, distances,
     plt.colorbar(sc2, ax=ax2, label='LogN (cm⁻²)')
     
     plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close(fig)
+    return fig
 
 def plot_best_matches(train_logn, train_tex, similarities, distances, 
                      closest_idx_sim, closest_idx_dist, 
-                     train_filenames, input_logn, pdf):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+                     train_filenames, input_logn, fig=None):
+    if fig is None:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
+    else:
+        ax1, ax2 = fig.subplots(1, 2)
     
     sc1 = ax1.scatter(train_logn, similarities, c=train_tex, cmap='viridis', alpha=0.7)
     ax1.scatter(train_logn[closest_idx_sim], similarities[closest_idx_sim], c='red', s=200, 
@@ -281,65 +430,23 @@ def plot_best_matches(train_logn, train_tex, similarities, distances,
     plt.colorbar(sc2, ax=ax2, label='Tex (K)')
     
     plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close(fig)
+    return fig
 
-def plot_individual_matches(new_x, input_spec, match, pdf):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), gridspec_kw={'height_ratios': [3, 1]})
-    
-    ax1.plot(new_x, input_spec, 'k-', label='Input Spectrum')
-    ax1.plot(match['x_synth'], match['y_synth'], 'r-', label='Best Match')
-    
-    # Verificar si hay matches y si tienen la clave 'center'
-    if match['matches']:
-        try:
-            min_center = min(p.get('center', float('inf')) for p in match['matches'])
-            max_center = max(p.get('center', float('-inf')) for p in match['matches'])
-            
-            if min_center != float('inf') and max_center != float('-inf'):
-                x_min = min_center - 1e9
-                x_max = max_center + 1e9
-                ax1.set_xlim(x_min, x_max)
-                
-                for m in match['matches']:
-                    if 'center' in m and 'height' in m:
-                        ip = m['input_peak']
-                        sp = m['synth_peak']
-                        ax1.axvline(ip['center'], color='blue', linestyle='--', alpha=0.5)
-                        ax1.axvline(sp['center'], color='green', linestyle='--', alpha=0.5)
-                        ax1.text(ip['center'], ip['height'], f"{ip['center']/1e9:.2f} GHz\n{ip['height']:.1f}K",
-                                 color='blue', fontsize=8, ha='center')
-                        ax1.text(sp['center'], sp['height'], f"{sp['center']/1e9:.2f} GHz\n{sp['height']:.1f}K",
-                                 color='green', fontsize=8, ha='center')
-        except KeyError:
-            pass
-    
-    ax1.set_title(f"Match: {match['filename']}\nGlobal Score: {match['score']:.3f} | LogN: {match['logn']:.2f} | Tex: {match['tex']:.2f}")
-    ax1.set_ylim(0, max(np.max(input_spec), np.max(match['y_synth'])) * 1.2)
-    ax1.legend()
-    ax1.grid(alpha=0.2)
-    
-    y_interp = interp1d(match['x_synth'], match['y_synth'], bounds_error=False, fill_value=0)(new_x)
-    ax2.plot(new_x, input_spec - y_interp, color='purple')
-    ax2.axhline(0, ls='--', color='gray')
-    ax2.set_xlabel("Frequency (Hz)")
-    ax2.set_ylabel("Residual (K)")
-    ax2.grid(alpha=0.2)
-    
-    plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close()
-    
-def plot_zoomed_peaks_comparison(input_spec, input_freq, best_match, pdf):
+def plot_zoomed_peaks_comparison(input_spec, input_freq, best_match, fig=None):
     matches = best_match['matches']
     if not matches:
-        return
+        return None
     
     n_matches = len(matches)
     n_cols = min(4, n_matches)
     n_rows = int(np.ceil(n_matches / n_cols))
     
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(20, 5*n_rows))
+    if fig is None:
+        fig, axs = plt.subplots(n_rows, n_cols, figsize=(20, 5*n_rows))
+    else:
+        fig.clear()
+        axs = fig.subplots(n_rows, n_cols)
+    
     if n_rows == 1 and n_cols == 1:
         axs = np.array([[axs]])
     elif n_rows == 1:
@@ -392,11 +499,14 @@ def plot_zoomed_peaks_comparison(input_spec, input_freq, best_match, pdf):
     
     fig.suptitle("Detailed Peak Comparison: Input vs Best Match", y=1.02, fontsize=14)
     plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close(fig)
+    return fig
 
-def plot_summary_comparison(new_x, input_spec, best_match, filepath, pdf):
-    fig = plt.figure(figsize=(16, 12))
+def plot_summary_comparison(new_x, input_spec, best_match, filepath, fig=None):
+    if fig is None:
+        fig = plt.figure(figsize=(16, 12))
+    else:
+        fig.clear()
+    
     gs = plt.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.3)
     
     ax = fig.add_subplot(gs[0])
@@ -439,12 +549,81 @@ def plot_summary_comparison(new_x, input_spec, best_match, filepath, pdf):
                 bbox=dict(facecolor='whitesmoke', alpha=0.7), fontfamily='monospace')
     
     plt.tight_layout()
-    pdf.savefig(fig, bbox_inches='tight')
-    plt.close(fig)
+    return fig
+
+ 
+def plot_individual_matches(new_x, input_spec, matches, fig=None):
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import interp1d
+    import numpy as np
+
+    
+    if not isinstance(matches, list):
+        matches = [matches]
+
+    
+    matches = matches[:5]
+    n = len(matches)
+
+    
+    fig, axes = plt.subplots(n * 2, 1, figsize=(14, 5 * n), gridspec_kw={'height_ratios': [3, 1] * n})
+
+    if n == 1:
+        axes = [axes]  
+
+    for i, match in enumerate(matches):
+        ax1 = axes[i * 2]
+        ax2 = axes[i * 2 + 1]
+
+        ax1.plot(new_x, input_spec, 'k-', label='Input Spectrum')
+        ax1.plot(match['x_synth'], match['y_synth'], 'r-', label='Best Match')
+
+        if match['matches']:
+            try:
+                min_center = min(p.get('center', float('inf')) for p in match['matches'])
+                max_center = max(p.get('center', float('-inf')) for p in match['matches'])
+
+                if min_center != float('inf') and max_center != float('-inf'):
+                    x_min = min_center - 1e9
+                    x_max = max_center + 1e9
+                    ax1.set_xlim(x_min, x_max)
+
+                    for m in match['matches']:
+                        if 'center' in m and 'height' in m:
+                            ip = m['input_peak']
+                            sp = m['synth_peak']
+                            ax1.axvline(ip['center'], color='blue', linestyle='--', alpha=0.5)
+                            ax1.axvline(sp['center'], color='green', linestyle='--', alpha=0.5)
+                            ax1.text(ip['center'], ip['height'],
+                                     f"{ip['center']/1e9:.2f} GHz\n{ip['height']:.1f}K",
+                                     color='blue', fontsize=8, ha='center')
+                            ax1.text(sp['center'], sp['height'],
+                                     f"{sp['center']/1e9:.2f} GHz\n{sp['height']:.1f}K",
+                                     color='green', fontsize=8, ha='center')
+            except KeyError:
+                pass
+
+        ax1.set_title(f"[{i+1}] Match: {match['filename']}\nScore: {match['score']:.3f} | LogN: {match['logn']:.2f} | Tex: {match['tex']:.2f}")
+        ax1.set_ylim(0, max(np.max(input_spec), np.max(match['y_synth'])) * 1.2)
+        ax1.legend()
+        ax1.grid(alpha=0.2)
+
+        y_interp = interp1d(match['x_synth'], match['y_synth'], bounds_error=False, fill_value=0)(new_x)
+        ax2.plot(new_x, input_spec - y_interp, color='purple')
+        ax2.axhline(0, ls='--', color='gray')
+        ax2.set_xlabel("Frequency (Hz)")
+        ax2.set_ylabel("Residual (K)")
+        ax2.grid(alpha=0.2)
+
+    fig.suptitle("Top Individual Matches", y=0.99, fontsize=16)
+    plt.tight_layout()
+    return fig
+
+
 
 def analyze_spectrum(filepath, model, train_data, train_freq, 
                     train_filenames, train_headers, 
-                    train_logn, train_tex, pdf, database_folder):
+                    train_logn, train_tex, config, database_folder):
     try:
         print(f"\nProcessing input spectrum: {filepath}")
         
@@ -454,34 +633,28 @@ def analyze_spectrum(filepath, model, train_data, train_freq,
         input_freq, input_spec, header, input_logn, input_tex = process_input_file(filepath)
         new_x, input_spec = prepare_input_spectrum(input_freq, input_spec, train_freq, train_data)
         
-        input_peaks = detect_peaks(new_x, input_spec, CONFIG['peak_matching']['sigma_threshold'])
-        input_peaks = input_peaks[:CONFIG['peak_matching']['top_n_lines']]
+        input_peaks = detect_peaks(new_x, input_spec, config)
+        input_peaks = input_peaks[:config['peak_matching']['top_n_lines']]
         
         print("Precomputing peaks for training spectra...")
         train_peaks_list = []
         for i in range(train_data.shape[0]):
             synth_spec = train_data[i,:,0]
             synth_peaks = detect_peaks(train_freq[i], synth_spec)
-            train_peaks_list.append(synth_peaks[:CONFIG['peak_matching']['top_n_lines']])
+            train_peaks_list.append(synth_peaks[:config['peak_matching']['top_n_lines']])
         
         similarities, distances = enhanced_calculate_metrics(
-            input_spec, train_data.squeeze(), input_peaks, train_peaks_list)
+            input_spec, train_data.squeeze(), input_peaks, train_peaks_list, config)
         
-        top_n = CONFIG['peak_matching']['top_n_similar']
+        top_n = config['peak_matching']['top_n_similar']
         top_similar_indices = np.argsort(distances)[:top_n]
-        
-        plot_similarity_metrics(train_logn, train_tex, similarities, distances, 
-                              top_similar_indices, input_logn, input_tex, pdf)
-        
-        plot_tex_metrics(train_tex, train_logn, similarities, distances, 
-                        top_similar_indices, input_tex, input_logn, pdf)
         
         results = []
         for i in top_similar_indices:
             synth_spec = train_data[i,:,0]
             synth_peaks = train_peaks_list[i]
             
-            matches = match_peaks(input_peaks, synth_peaks)
+            matches = match_peaks(input_peaks, synth_peaks, config)
             global_score = calculate_global_score(matches)
             
             results.append({
@@ -502,74 +675,30 @@ def analyze_spectrum(filepath, model, train_data, train_freq,
             })
         
         results.sort(key=lambda r: r['score'])
-        top_matches = results[:CONFIG['peak_matching']['top_n_lines']]
+        top_matches = results[:config['peak_matching']['top_n_lines']]
         
         closest_idx_sim = np.argmax(similarities)
         closest_idx_dist = np.argmin(distances)
         
-        plot_best_matches(train_logn, train_tex, similarities, distances, 
-                         closest_idx_sim, closest_idx_dist, 
-                         train_filenames, input_logn, pdf)
+        best_match = top_matches[0] if top_matches else None
         
-        for match in top_matches[:5]:
-            plot_individual_matches(new_x, input_spec, match, pdf)
-        
-        best_match = top_matches[0]
-        plot_zoomed_peaks_comparison(input_spec, new_x, best_match, pdf)
-        plot_summary_comparison(new_x, input_spec, best_match, filepath, pdf)
+        return {
+            'input_freq': new_x,
+            'input_spec': input_spec,
+            'input_peaks': input_peaks,
+            'similarities': similarities,
+            'distances': distances,
+            'top_similar_indices': top_similar_indices,
+            'closest_idx_sim': closest_idx_sim,
+            'closest_idx_dist': closest_idx_dist,
+            'best_match': best_match,
+            'train_logn': train_logn,
+            'train_tex': train_tex,
+            'train_filenames': train_filenames,
+            'input_logn': input_logn,
+            'input_tex': input_tex
+        }
         
     except Exception as e:
         print(f"Error processing input spectrum: {str(e)}")
-
-def main():
-    if not os.path.exists(CONFIG['trained_models_dir']):
-        print(f"Error: Directory with trained models not found: {CONFIG['trained_models_dir']}")
-        return
-    
-    model_files = [f for f in os.listdir(CONFIG['trained_models_dir']) 
-                  if f.endswith('.keras') and not f.startswith('.')]
-    
-    if not model_files:
-        print("No trained models found in the directory")
-        return
-    
-    if not os.path.exists(CONFIG['input_spectrum_file']):
-        print(f"Input spectrum file not found: {CONFIG['input_spectrum_file']}")
-        return
-    
-    for model_file in model_files:
-        mol_name = model_file.replace('_model.keras', '')
-        pdf_filename = f"{CONFIG['output_pdf']}_{mol_name}.pdf"
-        
-        with PdfPages(pdf_filename) as pdf:
-            try:
-                print(f"\nAnalyzing with model: {model_file}")
-                
-                # Load model
-                model_path = os.path.join(CONFIG['trained_models_dir'], model_file)
-                model = tf.keras.models.load_model(model_path)
-                
-                # Load training data
-                data_file = os.path.join(CONFIG['trained_models_dir'], f'{mol_name}_train_data.npz')
-                if not os.path.exists(data_file):
-                    print(f"Training data not found for {mol_name}")
-                    continue
-                
-                with np.load(data_file) as data:
-                    train_freq = data['train_freq']
-                    train_data = data['train_data']
-                    train_logn = data['train_logn']
-                    train_tex = data['train_tex']
-                    headers = data['headers']
-                    filenames = data['filenames']
-                
-                analyze_spectrum(CONFIG['input_spectrum_file'], model, train_data, train_freq,
-                               filenames, headers, train_logn, train_tex, pdf, mol_name)
-                
-                print(f"Analysis complete for {mol_name}. Results saved to: {pdf_filename}")
-                
-            except Exception as e:
-                print(f"Error analyzing with model {model_file}: {str(e)}")
-
-if __name__ == "__main__":
-    main()
+        raise
