@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions import *
+from core_functions_3 import *
 from cube_functions import *
 import tempfile
 import plotly.graph_objects as go
@@ -13,7 +13,7 @@ import shutil
 import time
 from astropy.io import fits
 import warnings
-from paths import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
+from paths_3 import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
 from texts import (
     PROJECT_DESCRIPTION,
     PARAMS_EXPLANATION,
@@ -27,24 +27,24 @@ from texts import (
 
 warnings.filterwarnings('ignore')
 
-# === CONFIGURACIÓN DE PÁGINA ===
+# === PAGE CONFIGURATION ===
 st.set_page_config(
     layout="wide", 
     page_title="AI-ITACA | Spectrum Analyzer",
     page_icon="🔭" 
 )
 
-# === CARGAR ESTILOS CSS ===
+# ===  CSS STYLES ===
 with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# === FUNCIÓN PARA BLOQUEAR CONTROLES DURANTE PROCESAMIENTO ===
+# === BLOCK BUTTONGS DURING PROCESSING ===
 def disable_widgets():
     """Deshabilita todos los widgets cuando hay procesamiento en curso"""
     processing = st.session_state.get('processing', False)
     return processing
 
-# === HEADER CON IMAGEN Y DESCRIPCIÓN ===
+# === HEADER AND PROJECT DESCRIPTION ===
 st.image("NGC6523_BVO_2.jpg", use_container_width=True)
 
 col1, col2 = st.columns([1, 3])
@@ -55,10 +55,9 @@ with col2:
     st.markdown(f'<p class="main-title">{MAIN_TITLE}</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="subtitle">{SUBTITLE}</p>', unsafe_allow_html=True)
 
-# Descripción del proyecto
 st.markdown(PROJECT_DESCRIPTION, unsafe_allow_html=True)
 
-# === CONFIGURACIÓN DE MODELOS ===
+# === MODELS CONFIGURATION ===
 if not os.path.exists(TEMP_MODEL_DIR):
     os.makedirs(TEMP_MODEL_DIR)
 
@@ -113,12 +112,12 @@ def download_models_from_drive(folder_url, output_dir):
     finally:
         st.session_state['processing'] = False
 
-# === BARRA LATERAL ===
+# === LATERAL BAR ===
 st.sidebar.title("Configuration")
 
 model_files, data_files, models_downloaded = download_models_from_drive(GDRIVE_FOLDER_URL, TEMP_MODEL_DIR)
 
-# Control de archivo subido
+# upload file
 if 'prev_uploaded_file' not in st.session_state:
     st.session_state.prev_uploaded_file = None
 
@@ -129,7 +128,7 @@ current_uploaded_file = st.sidebar.file_uploader(
     disabled=disable_widgets()
 )
 
-# Configuración de unidades
+# Units Configuration
 st.sidebar.markdown("---")
 st.sidebar.subheader("Units Configuration")
 
@@ -149,7 +148,7 @@ intensity_unit = st.sidebar.selectbox(
     disabled=disable_widgets()
 )
 
-# Factores de conversión
+# COnversion Factors
 freq_conversion = {
     "GHz": 1e9,
     "MHz": 1e6,
@@ -175,7 +174,7 @@ if current_uploaded_file != st.session_state.prev_uploaded_file:
     st.session_state.prev_uploaded_file = current_uploaded_file
     st.rerun()
 
-# Parámetros de análisis
+# Analisis Parameters
 st.sidebar.subheader("Peak Matching Parameters")
 sigma_emission = st.sidebar.slider("Sigma Emission", 0.1, 5.0, 1.5, step=0.1, key="sigma_emission_slider", disabled=disable_widgets())
 window_size = st.sidebar.slider("Window Size", 1, 20, 3, step=1, disabled=disable_widgets())
@@ -211,10 +210,10 @@ config = {
 tab_molecular, tab_cube = st.tabs(["Molecular Analyzer", "Cube Visualizer"])
 
 with tab_molecular:
-    # === CONTENIDO DEL ANALIZADOR MOLECULAR ===
+    # === MOLECULAR ANALYZER ===
     st.title("Molecular Spectrum Analyzer | AI - ITACA")
 
-    # Botones de información
+    #Information Buttons
     st.markdown('<div class="buttons-container"></div>', unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns([0.5, 0.5, 0.5, 0.5])
     with col1:
@@ -234,7 +233,7 @@ with tab_molecular:
                         help="Click to show Acknowledgments",
                         disabled=disable_widgets())
 
-    # Mostrar contenido según botón presionado
+    # Show contents
     if params_tab:
         with st.container():
             st.markdown(PARAMS_EXPLANATION, unsafe_allow_html=True)
@@ -247,6 +246,9 @@ with tab_molecular:
                 </div>
             """, unsafe_allow_html=True)
             st.markdown(TRAINING_DATASET, unsafe_allow_html=True)
+            st.image("Table_of_Mol_Params.jpg", 
+                    use_container_width=True,
+                    output_format="JPEG")
             st.markdown("""
             <div class="pro-tip">
                 <p><strong>Note:</strong> The training dataset was generated using LTE radiative transfer models under typical ISM conditions.</p>
@@ -417,7 +419,7 @@ with tab_molecular:
                 finally:
                     st.session_state['processing'] = False
 
-            # Mostrar resultados si el análisis está completo
+            #Show results
             if 'analysis_done' in st.session_state and st.session_state['analysis_done']:
                 tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     "Interactive Summary", 
@@ -513,7 +515,7 @@ with tab_molecular:
                             results['input_logn'], results['input_tex']
                         ))
 
-    # Instrucciones
+    # Instructions
     st.sidebar.markdown("""
     **Instructions:**
     1. Select the directory containing the trained models
@@ -531,7 +533,7 @@ with tab_molecular:
     """)
 
 with tab_cube:
-    # === CONTENIDO DEL VISUALIZADOR DE CUBOS ===
+    # === CUBE VISUALIZER ===
     st.title("Cube Visualizer | AI-ITACA")
     st.markdown(CUBE_VISUALIZER_DESCRIPTION, unsafe_allow_html=True)
     
@@ -693,7 +695,7 @@ with tab_cube:
             finally:
                 st.session_state['processing'] = False
 
-# === FUNCIONES EN CACHÉ ===
+# === CACHÉ FUNCTIONS ===
 @st.cache_data(ttl=3600)
 def load_model(_model_path):
     return tf.keras.models.load_model(_model_path)
