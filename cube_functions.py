@@ -1,6 +1,6 @@
 
 # === FUNCTIONS FOR CUBE VISUALIZING ===
-@st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
+
 def load_alma_cube(file_path, max_mb=2048):
     """Carga cubo ALMA desde archivo FITS con gestión de memoria"""
     file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
