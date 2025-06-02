@@ -93,8 +93,9 @@ def process_input_file(filepath):
                         if len(parts) >= 2:
                             try:
                                 frequency = float(parts[0]) * 1e9  # Convertir a Hz
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
+                                intensity = float(parts[1]) if 'nan' not in parts[1].lower() else np.nan
+                                if not np.isnan(intensity):  # Solo añadir si no es NaN
+                                    data.append((frequency, intensity))
                             except ValueError:
                                 continue
 
@@ -126,8 +127,9 @@ def process_input_file(filepath):
                         if len(parts) >= 2:
                             try:
                                 frequency = float(parts[0]) * 1e9  # Convertir a Hz
-                                intensity = float(parts[1])
-                                data.append((frequency, intensity))
+                                intensity = float(parts[1]) if 'nan' not in parts[1].lower() else np.nan
+                                if not np.isnan(intensity):  # Solo añadir si no es NaN
+                                    data.append((frequency, intensity))
                             except ValueError:
                                 continue
 
@@ -156,18 +158,21 @@ def process_input_file(filepath):
                         channels = np.arange(n)
                         frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
                         
-                        all_freqs.append(frequencies)
-                        all_intensities.append(spectrum)
+                        # Filtrar NaN en los datos FITS
+                        mask = ~np.isnan(spectrum)
+                        all_freqs.append(frequencies[mask])
+                        all_intensities.append(spectrum[mask])
                     
-                    combined_freqs = np.concatenate(all_freqs)
-                    combined_intensities = np.concatenate(all_intensities)
-                    
-                    sorted_indices = np.argsort(combined_freqs)
-                    freq = combined_freqs[sorted_indices]
-                    spec = combined_intensities[sorted_indices]
-                    
-                    header = f"Processed from FITS file: {os.path.basename(filepath)}"
-                    return freq, spec, header, input_logn, input_tex
+                    if all_freqs and all_intensities:
+                        combined_freqs = np.concatenate(all_freqs)
+                        combined_intensities = np.concatenate(all_intensities)
+                        
+                        sorted_indices = np.argsort(combined_freqs)
+                        freq = combined_freqs[sorted_indices]
+                        spec = combined_intensities[sorted_indices]
+                        
+                        header = f"Processed from FITS file: {os.path.basename(filepath)}"
+                        return freq, spec, header, input_logn, input_tex
 
         except Exception as e_fits:
             # .SPEC
@@ -197,18 +202,21 @@ def process_input_file(filepath):
                                 channels = np.arange(n)
                                 frequencies = crval3 + (channels + 1 - crpix3) * cdelt3  # en Hz
                                 
-                                all_freqs.append(frequencies)
-                                all_intensities.append(spectrum)
+                                # Filtrar NaN en los datos FITS del archivo .SPEC
+                                mask = ~np.isnan(spectrum)
+                                all_freqs.append(frequencies[mask])
+                                all_intensities.append(spectrum[mask])
                             
-                            combined_freqs = np.concatenate(all_freqs)
-                            combined_intensities = np.concatenate(all_intensities)
-                            
-                            sorted_indices = np.argsort(combined_freqs)
-                            freq = combined_freqs[sorted_indices]
-                            spec = combined_intensities[sorted_indices]
-                            
-                            header = f"Processed from FITS file within {os.path.basename(filepath)}"
-                            return freq, spec, header, input_logn, input_tex
+                            if all_freqs and all_intensities:
+                                combined_freqs = np.concatenate(all_freqs)
+                                combined_intensities = np.concatenate(all_intensities)
+                                
+                                sorted_indices = np.argsort(combined_freqs)
+                                freq = combined_freqs[sorted_indices]
+                                spec = combined_intensities[sorted_indices]
+                                
+                                header = f"Processed from FITS file within {os.path.basename(filepath)}"
+                                return freq, spec, header, input_logn, input_tex
                 finally:
                     # Limpieza de archivos temporales
                     for root, dirs, files in os.walk(extract_folder, topdown=False):
@@ -222,6 +230,7 @@ def process_input_file(filepath):
         raise ValueError(f"Error al procesar el archivo {filepath}: {str(e)}")
 
     raise ValueError("No se pudo procesar el archivo con ningún método conocido")
+    
 
 def prepare_input_spectrum(input_freq, input_spec, train_freq, train_data):
     train_min_freq = np.min(train_freq)
