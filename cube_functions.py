@@ -1,5 +1,5 @@
 
-# === FUNCIONES PARA VISUALIZACIÓN DE CUBOS ===
+# === FUNCTIONS FOR CUBE VISUALIZING ===
 @st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
 def load_alma_cube(file_path, max_mb=2048):
     """Carga cubo ALMA desde archivo FITS con gestión de memoria"""
