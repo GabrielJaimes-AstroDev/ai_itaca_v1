@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from core_functions import *
+from core_functions_3 import *
 from cube_functions import *
 import tempfile
 import plotly.graph_objects as go
@@ -13,7 +13,7 @@ import shutil
 import time
 from astropy.io import fits
 import warnings
-from paths import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
+from paths_3 import GDRIVE_FOLDER_URL, TEMP_MODEL_DIR
 from texts import (
     PROJECT_DESCRIPTION,
     PARAMS_EXPLANATION,
