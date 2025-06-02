@@ -205,7 +205,7 @@ config = {
     }
 }
 
-@st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
+#@st.cache_data(ttl=3600, max_entries=3, show_spinner="Loading ALMA cube...")
 
 # === PESTAÑAS PRINCIPALES ===
 tab_molecular, tab_cube = st.tabs(["Molecular Analyzer", "Cube Visualizer"])
