@@ -247,6 +247,9 @@ with tab_molecular:
                 </div>
             """, unsafe_allow_html=True)
             st.markdown(TRAINING_DATASET, unsafe_allow_html=True)
+            st.image("Table_of_Mol_Params.jpg", 
+                    use_container_width=True,
+                    output_format="JPEG")
             st.markdown("""
             <div class="pro-tip">
                 <p><strong>Note:</strong> The training dataset was generated using LTE radiative transfer models under typical ISM conditions.</p>
