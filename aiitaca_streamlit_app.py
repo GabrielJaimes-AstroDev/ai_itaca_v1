@@ -426,8 +426,8 @@ with tab_molecular:
                     "Molecule Best Match", 
                     "Peak Matching", 
                     "CNN Training", 
-                    "Top Selection: LogN", 
-                    "Top Selection: Tex"
+                    "Top Selection: Tex", 
+                    "Top Selection: LogN"
                 ])
 
                 with tab0:
