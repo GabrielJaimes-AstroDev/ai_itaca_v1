@@ -183,7 +183,7 @@ fwhm_ghz = st.sidebar.slider("FWHM (GHz)", 0.01, 0.5, 0.05, step=0.01, disabled=
 tolerance_ghz = st.sidebar.slider("Tolerance (GHz)", 0.01, 1.0, 0.1, step=0.01, disabled=disable_widgets())
 min_peak_height_ratio = st.sidebar.slider("Min Peak Height Ratio", 0.1, 1.0, 0.3, step=0.05, disabled=disable_widgets())
 top_n_lines = st.sidebar.slider("Top N Lines", 5, 100, 30, step=5, disabled=disable_widgets())
-top_n_similar = st.sidebar.slider("Top N Similar", 50, 5000, 800, step=50, disabled=disable_widgets())
+top_n_similar = st.sidebar.slider("Top N Similar", 50, 5000, 50, step=50, disabled=disable_widgets())
 
 config = {
     'trained_models_dir': TEMP_MODEL_DIR,
